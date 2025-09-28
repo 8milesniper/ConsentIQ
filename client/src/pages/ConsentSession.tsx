@@ -27,7 +27,10 @@ export const ConsentSession = (): JSX.Element => {
     onSuccess: (newSession) => {
       setSession(newSession);
       setStatus("waiting");
-      toast({ title: "Session created!", description: "QR code is ready for your partner." });
+      toast({ 
+        title: "New Test Session Created!", 
+        description: `Fresh testing link: ${newSession.qrCodeId.slice(-8)}` 
+      });
     },
     onError: (error: Error) => {
       console.error("Failed to create session:", error);
@@ -201,11 +204,18 @@ export const ConsentSession = (): JSX.Element => {
                 <Button
                   onClick={handleGenerateNewCode}
                   variant="outline"
-                  className="w-full py-3 rounded-full border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50"
+                  className="w-full py-3 rounded-full border-2 border-green-300 text-green-700 font-semibold hover:bg-green-50"
                   data-testid="button-generate-code"
                 >
-                  🔄 Generate New Code
+                  🆕 Start New Test Session
                 </Button>
+                
+                {session && (
+                  <div className="text-xs text-center text-gray-500 mt-2">
+                    <p>✅ This QR code is unique for this test</p>
+                    <p>💡 Click "Start New Test Session" for fresh testing links</p>
+                  </div>
+                )}
               </div>
             ) : (
               // Session Creation Loading
