@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createConsentSession, getConsentSession } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { QRCode } from "@/components/QRCode";
 import type { ConsentSession as ConsentSessionType } from "@shared/schema";
 
@@ -15,6 +16,7 @@ export const ConsentSession = (): JSX.Element => {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   // Generate unique QR code ID
   const generateQrCodeId = () => {
@@ -64,12 +66,18 @@ export const ConsentSession = (): JSX.Element => {
   }, [sessionData]);
 
   const createSession = async () => {
+    if (!user) {
+      toast({ title: "Authentication required", variant: "destructive" });
+      return;
+    }
+
     const qrCodeId = generateQrCodeId();
     
     // Create session data - using placeholder participant info
     // In a real app, this might come from user input or app state
     const sessionData = {
       qrCodeId,
+      initiatorUserId: user.id,
       participantName: "Partner", // This would be dynamic in real app
       participantAge: 25, // This would be dynamic in real app  
       consentStatus: "pending" as const,

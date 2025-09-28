@@ -85,7 +85,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/register", async (req, res) => {
     try {
       const validatedData = insertUserSchema.parse(req.body);
-      const { username, password } = validatedData;
+      const { username, password, fullName, phoneNumber, profilePicture } = validatedData;
 
       // Check if user already exists
       const existingUser = await storage.getUserByUsername(username);
@@ -97,10 +97,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hash password
       const hashedPassword = await bcrypt.hash(password, 12);
       
-      // Create user
+      // Create user with all profile data
       const user = await storage.createUser({ 
         username, 
-        password: hashedPassword 
+        password: hashedPassword,
+        fullName,
+        phoneNumber,
+        profilePicture
       });
 
       // Generate JWT token

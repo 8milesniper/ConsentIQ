@@ -60,6 +60,7 @@ export const AuthScreen = (): JSX.Element => {
             password: data.password,
             fullName: (data as CreateAccountData).fullName,
             phoneNumber: (data as CreateAccountData).phoneNumber,
+            profilePicture: profileImage, // Include the profile picture
           };
           
       const response = await fetch(endpoint, {

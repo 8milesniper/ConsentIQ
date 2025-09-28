@@ -47,7 +47,13 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
-    const user: User = { ...insertUser, id };
+    const user: User = { 
+      ...insertUser, 
+      id,
+      fullName: insertUser.fullName || null,
+      phoneNumber: insertUser.phoneNumber || null,
+      profilePicture: insertUser.profilePicture || null,
+    };
     this.users.set(id, user);
     return user;
   }
@@ -62,6 +68,7 @@ export class MemStorage implements IStorage {
     
     const session: ConsentSession = {
       id,
+      initiatorUserId: insertSession.initiatorUserId,
       participantName: insertSession.participantName,
       participantPhone: insertSession.participantPhone || null,
       participantAge: insertSession.participantAge,
