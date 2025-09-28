@@ -44,8 +44,10 @@ export const updateConsentSessionStatus = async (
   status: "pending" | "granted" | "denied" | "revoked", 
   videoAssetId?: string
 ): Promise<ConsentSession> => {
-  const response = await authenticatedFetch(`/api/consent/sessions/${id}/status`, {
+  const response = await fetch(`/api/consent/sessions/${id}/status`, {
     method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify({ status, videoAssetId }),
   });
 
@@ -59,8 +61,10 @@ export const updateConsentSessionStatus = async (
 
 // Video Asset API functions
 export const generateUploadUrl = async (filename: string, mimeType: string): Promise<{ uploadUrl: string; storageKey: string }> => {
-  const response = await authenticatedFetch("/api/video/upload-url", {
+  const response = await fetch("/api/video/upload-url", {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify({ filename, mimeType }),
   });
 
@@ -73,8 +77,10 @@ export const generateUploadUrl = async (filename: string, mimeType: string): Pro
 };
 
 export const createVideoAsset = async (assetData: InsertVideoAsset): Promise<VideoAsset> => {
-  const response = await authenticatedFetch("/api/video/assets", {
+  const response = await fetch("/api/video/assets", {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify(assetData),
   });
 

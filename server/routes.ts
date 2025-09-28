@@ -237,8 +237,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update consent session status (with proper validation)
-  app.patch("/api/consent/sessions/:id/status", requireAuth, async (req, res) => {
+  // Update consent session status (public access for participants)
+  app.patch("/api/consent/sessions/:id/status", async (req, res) => {
     try {
       const validatedData = updateConsentStatusSchema.parse(req.body);
       const { status, videoAssetId } = validatedData;
@@ -267,8 +267,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Video Asset Routes
   
-  // Generate upload URL for video (secured and validated)
-  app.post("/api/video/upload-url", requireAuth, async (req, res) => {
+  // Generate upload URL for video (public access for consent videos)
+  app.post("/api/video/upload-url", async (req, res) => {
     try {
       const validatedData = uploadUrlRequestSchema.parse(req.body);
       const { filename, mimeType } = validatedData;
@@ -284,8 +284,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create video asset metadata (secured)
-  app.post("/api/video/assets", requireAuth, async (req, res) => {
+  // Create video asset metadata (public access for consent videos)
+  app.post("/api/video/assets", async (req, res) => {
     try {
       const assetData = insertVideoAssetSchema.parse(req.body);
       const asset = await storage.createVideoAsset(assetData);
@@ -313,14 +313,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // DEVELOPMENT ONLY: Mock upload endpoint (remove in production)
+  // DEVELOPMENT ONLY: Video blob upload endpoint (public access)
   if (process.env.NODE_ENV === "development") {
-    app.post("/api/upload/:storageKey", requireAuth, async (req, res) => {
+    app.post("/api/upload/:storageKey", async (req, res) => {
       try {
-        // Mock endpoint for development - handles fake video uploads
-        console.warn("Using development upload endpoint - remove in production");
-        res.json({ success: true, storageKey: req.params.storageKey });
+        // Handle raw video blob upload for consent recordings
+        const chunks: Buffer[] = [];
+        let totalSize = 0;
+        
+        req.on('data', (chunk) => {
+          chunks.push(chunk);
+          totalSize += chunk.length;
+          // Limit upload size to 50MB
+          if (totalSize > 50 * 1024 * 1024) {
+            req.destroy();
+            res.status(413).json({ error: "File too large" });
+            return;
+          }
+        });
+        
+        req.on('end', () => {
+          const buffer = Buffer.concat(chunks);
+          console.log(`Consent video upload: ${req.params.storageKey}, size: ${buffer.length} bytes`);
+          
+          // In production, save to cloud storage here
+          res.json({ 
+            success: true, 
+            storageKey: req.params.storageKey,
+            size: buffer.length 
+          });
+        });
+        
+        req.on('error', (error) => {
+          console.error('Upload stream error:', error);
+          res.status(500).json({ error: "Upload stream error" });
+        });
+        
       } catch (error) {
+        console.error('Upload error:', error);
         res.status(500).json({ error: "Upload failed" });
       }
     });

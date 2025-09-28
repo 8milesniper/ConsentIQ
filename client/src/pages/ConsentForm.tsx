@@ -27,6 +27,8 @@ export const ConsentForm = (): JSX.Element => {
   const [recordingTime, setRecordingTime] = useState(0);
   const [session, setSession] = useState<ConsentSessionType | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [browserSupported, setBrowserSupported] = useState(true);
+  const [compatibilityError, setCompatibilityError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -72,6 +74,44 @@ export const ConsentForm = (): JSX.Element => {
       });
     }
   });
+
+  // Check browser compatibility
+  useEffect(() => {
+    const checkCompatibility = () => {
+      if (!navigator.mediaDevices) {
+        setCompatibilityError("Camera access not supported in this browser");
+        setBrowserSupported(false);
+        return;
+      }
+      
+      if (!navigator.mediaDevices.getUserMedia) {
+        setCompatibilityError("Camera access not available");
+        setBrowserSupported(false);
+        return;
+      }
+      
+      if (!window.MediaRecorder) {
+        setCompatibilityError("Video recording not supported in this browser");
+        setBrowserSupported(false);
+        return;
+      }
+      
+      // Check for supported video formats
+      const supportedFormats = ['video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'];
+      const supportedFormat = supportedFormats.find(format => MediaRecorder.isTypeSupported(format));
+      
+      if (!supportedFormat) {
+        setCompatibilityError("No supported video recording formats available");
+        setBrowserSupported(false);
+        return;
+      }
+      
+      setBrowserSupported(true);
+      setCompatibilityError(null);
+    };
+    
+    checkCompatibility();
+  }, []);
 
   // Set session when data loads
   useEffect(() => {
@@ -122,12 +162,14 @@ export const ConsentForm = (): JSX.Element => {
   };
 
   const startRecording = () => {
-    if (!streamRef.current) return;
+    if (!streamRef.current || !browserSupported) return;
 
     try {
-      const mediaRecorder = new MediaRecorder(streamRef.current, {
-        mimeType: 'video/webm;codecs=vp8,opus'
-      });
+      // Choose best supported format
+      const supportedFormats = ['video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'];
+      const mimeType = supportedFormats.find(format => MediaRecorder.isTypeSupported(format)) || 'video/webm';
+      
+      const mediaRecorder = new MediaRecorder(streamRef.current, { mimeType });
       
       mediaRecorderRef.current = mediaRecorder;
       const chunks: Blob[] = [];
@@ -139,7 +181,7 @@ export const ConsentForm = (): JSX.Element => {
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'video/webm' });
+        const blob = new Blob(chunks, { type: mimeType });
         setVideoBlob(blob);
         setCurrentStep(2); // Move to review step
       };
@@ -197,8 +239,13 @@ export const ConsentForm = (): JSX.Element => {
 
     setIsSubmitting(true);
     try {
+      // Strip codec parameters from MIME type and determine correct file extension
+      const baseMimeType = videoBlob.type.split(';')[0]; // Remove ;codecs=... part
+      const fileExtension = baseMimeType === 'video/mp4' ? 'mp4' : 'webm';
+      const filename = `consent-video-${Date.now()}.${fileExtension}`;
+      
       // Generate upload URL for video
-      const { uploadUrl, storageKey } = await generateUploadUrl(`consent-video-${Date.now()}.webm`, videoBlob.type);
+      const { uploadUrl, storageKey } = await generateUploadUrl(filename, baseMimeType);
       
       // Upload video blob (mock upload for development)
       const uploadResponse = await fetch(uploadUrl, {
@@ -216,8 +263,8 @@ export const ConsentForm = (): JSX.Element => {
 
       // Create video asset record
       const videoAsset = await createVideoAsset({
-        filename: `consent-video-${Date.now()}.webm`,
-        mimeType: videoBlob.type,
+        filename,
+        mimeType: baseMimeType, // Use stripped MIME type
         fileSize: videoBlob.size,
         storageKey,
         isEncrypted: true,
@@ -255,6 +302,37 @@ export const ConsentForm = (): JSX.Element => {
         <div className="text-center">
           <div className="animate-spin w-8 h-8 border-2 border-[#4ade80] border-t-transparent rounded-full mx-auto mb-4"></div>
           <p className="text-gray-600">Loading consent session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show browser compatibility error
+  if (!browserSupported && compatibilityError) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center px-6">
+        <div className="max-w-md w-full text-center">
+          <div className="w-16 h-16 mx-auto mb-6 bg-orange-100 rounded-full flex items-center justify-center">
+            <div className="w-8 h-8 text-orange-600">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+              </svg>
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Browser Not Supported</h2>
+          <p className="text-gray-600 mb-6">{compatibilityError}</p>
+          <div className="bg-blue-50 p-4 rounded-lg mb-6 text-left">
+            <h3 className="font-semibold text-blue-900 mb-2">Recommended browsers:</h3>
+            <ul className="text-sm text-blue-800 space-y-1">
+              <li>• Chrome 47+</li>
+              <li>• Firefox 29+</li>
+              <li>• Safari 14.1+</li>
+              <li>• Edge 79+</li>
+            </ul>
+          </div>
+          <p className="text-sm text-gray-500">
+            Please use a modern browser to complete consent verification.
+          </p>
         </div>
       </div>
     );
