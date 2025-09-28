@@ -158,7 +158,8 @@ export const ConsentSession = (): JSX.Element => {
           </button>
         </div>
 
-        <div className="absolute top-12 right-6 text-white">
+        {/* ConsentIQ Logo - Mobile Only */}
+        <div className="absolute top-12 right-6 text-white md:hidden">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 bg-[#4ade80] rounded-full flex items-center justify-center">
               <svg viewBox="0 0 24 24" className="w-4 h-4 text-white">
@@ -171,6 +172,7 @@ export const ConsentSession = (): JSX.Element => {
             <span className="font-semibold">ConsentIQ</span>
           </div>
         </div>
+
 
         {/* Main Content */}
         <div className="flex flex-col items-center justify-center min-h-screen px-6">
@@ -193,13 +195,6 @@ export const ConsentSession = (): JSX.Element => {
                   We'll update you with their response here.
                 </p>
                 
-                {session && (
-                  <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
-                    <p><strong>Session ID:</strong> {session.id.slice(0, 8)}...</p>
-                    <p><strong>QR Code ID:</strong> {session.qrCodeId}</p>
-                    <p><strong>Status:</strong> {session.consentStatus}</p>
-                  </div>
-                )}
                 
                 <Button
                   onClick={handleGenerateNewCode}
@@ -210,12 +205,6 @@ export const ConsentSession = (): JSX.Element => {
                   🆕 Start New Test Session
                 </Button>
                 
-                {session && (
-                  <div className="text-xs text-center text-gray-500 mt-2">
-                    <p>✅ This QR code is unique for this test</p>
-                    <p>💡 Click "Start New Test Session" for fresh testing links</p>
-                  </div>
-                )}
               </div>
             ) : (
               // Session Creation Loading

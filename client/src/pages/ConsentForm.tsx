@@ -508,9 +508,9 @@ export const ConsentForm = (): JSX.Element => {
             
             {/* Recording indicator */}
             {isRecording && (
-              <div className="absolute top-4 left-4 flex items-center gap-2">
-                <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                <span className="text-white text-sm font-medium">Recording</span>
+              <div className="absolute top-4 left-4 flex items-center gap-2 bg-red-600 px-3 py-1 rounded-full">
+                <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
+                <span className="text-white text-sm font-bold">🔴 REC</span>
               </div>
             )}
           </div>
@@ -527,21 +527,27 @@ export const ConsentForm = (): JSX.Element => {
 
           <div className="flex justify-center">
             {!isRecording ? (
-              <Button
-                onClick={startRecording}
-                className="w-20 h-20 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center"
-                data-testid="button-start-recording"
-              >
-                <div className="w-8 h-8 bg-white rounded-full"></div>
-              </Button>
+              <div className="text-center">
+                <Button
+                  onClick={startRecording}
+                  className="w-24 h-24 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center mb-2"
+                  data-testid="button-start-recording"
+                >
+                  <div className="w-8 h-8 bg-white rounded-full"></div>
+                </Button>
+                <p className="text-white text-sm font-medium">Tap to Record</p>
+              </div>
             ) : (
-              <Button
-                onClick={stopRecording}
-                className="w-20 h-20 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center"
-                data-testid="button-stop-recording"
-              >
-                <div className="w-6 h-6 bg-white"></div>
-              </Button>
+              <div className="text-center">
+                <Button
+                  onClick={stopRecording}
+                  className="w-24 h-24 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center animate-pulse mb-2 ring-4 ring-red-300"
+                  data-testid="button-stop-recording"
+                >
+                  <div className="w-8 h-8 bg-white"></div>
+                </Button>
+                <p className="text-red-400 text-sm font-bold animate-pulse">🔴 RECORDING - Tap to Stop</p>
+              </div>
             )}
           </div>
         </div>
