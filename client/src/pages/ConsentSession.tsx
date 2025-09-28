@@ -174,26 +174,7 @@ export const ConsentSession = (): JSX.Element => {
           <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl">
             
             {status === "waiting" ? (
-              // Waiting Screen
-              <div className="space-y-6">
-                <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
-                  <div className="animate-pulse w-8 h-8 bg-gray-400 rounded-full"></div>
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900">Waiting on Response</h2>
-                <p className="text-gray-600">
-                  Your partner can scan the QR code below to provide consent.
-                  We'll update you with their response here.
-                </p>
-                {session && (
-                  <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
-                    <p><strong>Session ID:</strong> {session.id.slice(0, 8)}...</p>
-                    <p><strong>QR Code:</strong> {session.qrCodeId}</p>
-                    <p><strong>Status:</strong> {session.consentStatus}</p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              // QR Code Screen
+              // QR Code & Waiting Screen
               <div className="space-y-6">
                 <div className="w-40 h-40 mx-auto flex items-center justify-center">
                   <QRCode 
@@ -202,32 +183,40 @@ export const ConsentSession = (): JSX.Element => {
                     className="mx-auto"
                   />
                 </div>
-
-                <h2 className="text-2xl font-bold text-gray-900">
-                  {createSessionMutation.isPending ? "Creating Session..." : "Start New"}
-                </h2>
+                
+                <h2 className="text-2xl font-bold text-gray-900">Waiting on Response</h2>
                 <p className="text-gray-600">
-                  {createSessionMutation.isPending 
-                    ? "Setting up your consent session..."
-                    : "Have your partner scan this QR code to streamline the process of getting to consent."
-                  }
+                  Your partner can scan the QR code above to provide consent.
+                  We'll update you with their response here.
                 </p>
+                
                 {session && (
                   <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
-                    <p><strong>Partner URL:</strong></p>
-                    <p className="text-xs break-all">{window.location.origin}/consent/form/{session.qrCodeId}</p>
+                    <p><strong>Session ID:</strong> {session.id.slice(0, 8)}...</p>
+                    <p><strong>QR Code ID:</strong> {session.qrCodeId}</p>
+                    <p><strong>Status:</strong> {session.consentStatus}</p>
                   </div>
                 )}
-
+                
                 <Button
                   onClick={handleGenerateNewCode}
-                  disabled={createSessionMutation.isPending}
                   variant="outline"
-                  className="w-full py-3 rounded-full border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 disabled:opacity-50"
+                  className="w-full py-3 rounded-full border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50"
                   data-testid="button-generate-code"
                 >
-                  {createSessionMutation.isPending ? "⏳ Creating..." : "🔄 Generate New Code"}
+                  🔄 Generate New Code
                 </Button>
+              </div>
+            ) : (
+              // Session Creation Loading
+              <div className="space-y-6">
+                <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
+                  <div className="animate-pulse w-8 h-8 bg-gray-400 rounded-full"></div>
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900">Creating Session...</h2>
+                <p className="text-gray-600">
+                  Setting up your consent session...
+                </p>
               </div>
             )}
           </div>
