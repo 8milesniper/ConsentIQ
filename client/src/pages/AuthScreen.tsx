@@ -80,7 +80,8 @@ export const AuthScreen = (): JSX.Element => {
     },
     onSuccess: (data) => {
       setAuthData(data.user);
-      setLocation("/dashboard");
+      // Let the router handle redirect after auth state updates
+      setTimeout(() => setLocation("/dashboard"), 100);
     },
     onError: (error: Error) => {
       toast({ 

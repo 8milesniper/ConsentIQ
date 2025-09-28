@@ -37,6 +37,7 @@ export const useAuth = () => {
 
   const setAuthData = (user: User) => {
     setUser(user);
+    setIsLoading(false); // Ensure loading state is false
     // No token storage needed - handled by HTTP-only cookies
   };
 
