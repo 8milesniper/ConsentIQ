@@ -58,8 +58,7 @@ export const AuthScreen = (): JSX.Element => {
     },
     onSuccess: (data) => {
       setAuthData(data.user);
-      toast({ title: "Account created!", description: "Welcome to ConsentIQ." });
-      setLocation("/welcome");
+      setLocation("/dashboard");
     },
     onError: (error: Error) => {
       toast({ 
