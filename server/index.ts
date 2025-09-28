@@ -13,8 +13,8 @@ import { setupVite, serveStatic, log } from "./vite";
 import cookieParser from "cookie-parser";
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.json({ limit: '10mb' })); // Increase limit for profile pictures
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 app.use(cookieParser()); // Enable cookie parsing for HTTP-only auth cookies
 
 app.use((req, res, next) => {
