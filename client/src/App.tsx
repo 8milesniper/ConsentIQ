@@ -1,9 +1,10 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
+import { useAuth } from "@/hooks/useAuth";
 
 import { WelcomeScreen } from "@/pages/WelcomeScreen";
 import { AuthScreen } from "@/pages/AuthScreen";
@@ -13,10 +14,24 @@ import { ConsentForm } from "@/pages/ConsentForm";
 import { ElementLearnAndEngage } from "@/pages/ElementLearnAndEngage";
 
 function Router() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  // Show loading while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white text-xl">Loading ConsentIQ...</div>
+      </div>
+    );
+  }
+
   return (
     <Switch>
       {/* ConsentIQ main app flow */}
-      <Route path="/" component={AuthScreen} />
+      <Route path="/">
+        {isAuthenticated ? <Redirect to="/dashboard" /> : <AuthScreen />}
+      </Route>
+      <Route path="/auth" component={AuthScreen} />
       <Route path="/welcome" component={WelcomeScreen} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/consent/new" component={ConsentSession} />
