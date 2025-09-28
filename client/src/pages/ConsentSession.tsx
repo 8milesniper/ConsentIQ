@@ -250,17 +250,22 @@ export const ConsentSession = (): JSX.Element => {
           
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Good News</h2>
           <p className="text-gray-600 mb-2">
-            We've received a response from your partner. We've 
-            also received a summary of the interaction and 
-            their explicit consent.
+            {sessionData?.videoAssetId 
+              ? "We've received a video response with explicit consent from your partner." 
+              : "We've received a response from your partner with their explicit consent."
+            }
           </p>
           
           <div className="bg-green-50 p-4 rounded-xl mb-6">
             <p className="text-green-800 font-semibold">"Yes, I consent"</p>
             {sessionData && (
-              <p className="text-xs text-gray-500 mt-2">
-                Granted: {new Date(sessionData.consentGrantedTime || '').toLocaleString()}
-              </p>
+              <div className="text-xs text-gray-500 mt-2 space-y-1">
+                <p>Granted: {new Date(sessionData.consentGrantedTime || '').toLocaleString()}</p>
+                {sessionData.videoAssetId && (
+                  <p>📹 Video recorded: {sessionData.videoAssetId.slice(0, 8)}...</p>
+                )}
+                <p>👤 Participant: {sessionData.participantName}</p>
+              </div>
             )}
           </div>
 
