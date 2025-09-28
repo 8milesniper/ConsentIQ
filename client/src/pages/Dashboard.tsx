@@ -1,76 +1,16 @@
-import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 
-export const WelcomeScreen = (): JSX.Element => {
-  const [currentStep, setCurrentStep] = useState(0);
+export const Dashboard = (): JSX.Element => {
   const [, setLocation] = useLocation();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, logout } = useAuth();
 
-  // Auto-advance through loading screens
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (currentStep < 3) {
-        setCurrentStep(currentStep + 1);
-      } else if (currentStep === 3 && !isLoading) {
-        // After loading animation, check authentication
-        if (isAuthenticated) {
-          setLocation("/dashboard");
-        } else {
-          setLocation("/auth");
-        }
-      }
-    }, 1500);
+  const handleLogout = () => {
+    logout();
+    setLocation("/");
+  };
 
-    return () => clearTimeout(timer);
-  }, [currentStep, isAuthenticated, isLoading, setLocation]);
-
-  // Loading screens (steps 0-2)
-  if (currentStep <= 2) {
-    const logos = [
-      { size: "w-24 h-24", opacity: "opacity-100" }, // Large heart
-      { size: "w-16 h-16", opacity: "opacity-90" },  // Medium heart  
-      { size: "w-20 h-20", opacity: "opacity-95" },  // ConsentIQ with logo
-    ];
-
-    const currentLogo = logos[currentStep];
-
-    return (
-      <div className="bg-white min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center justify-center">
-          <div className={`${currentLogo.size} ${currentLogo.opacity} transition-all duration-500 ease-in-out mb-8`}>
-            {currentStep === 2 ? (
-              // ConsentIQ logo with text
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-[#4ade80] rounded-full flex items-center justify-center">
-                  <svg viewBox="0 0 24 24" className="w-8 h-8 text-white">
-                    <path
-                      fill="currentColor"
-                      d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-                    />
-                  </svg>
-                </div>
-                <span className="text-2xl font-bold text-black">ConsentIQ</span>
-              </div>
-            ) : (
-              // Heart icon only
-              <div className="bg-[#4ade80] rounded-full flex items-center justify-center w-full h-full">
-                <svg viewBox="0 0 24 24" className="w-12 h-12 text-white">
-                  <path
-                    fill="currentColor"
-                    d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-                  />
-                </svg>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Main dashboard (step 3)
   return (
     <div 
       className="min-h-screen bg-cover bg-center bg-no-repeat relative"
@@ -80,17 +20,30 @@ export const WelcomeScreen = (): JSX.Element => {
     >
       {/* Header */}
       <div className="absolute top-12 right-6 text-white">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 bg-[#4ade80] rounded-full flex items-center justify-center">
-            <svg viewBox="0 0 24 24" className="w-4 h-4 text-white">
-              <path
-                fill="currentColor"
-                d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-              />
-            </svg>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleLogout}
+            className="text-sm text-gray-300 hover:text-white"
+            data-testid="button-logout"
+          >
+            Logout
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 bg-[#4ade80] rounded-full flex items-center justify-center">
+              <svg viewBox="0 0 24 24" className="w-4 h-4 text-white">
+                <path
+                  fill="currentColor"
+                  d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                />
+              </svg>
+            </div>
+            <span className="font-semibold">ConsentIQ</span>
           </div>
-          <span className="font-semibold">ConsentIQ</span>
         </div>
+      </div>
+
+      <div className="absolute top-16 left-6 text-white">
+        <p className="text-sm opacity-75">Welcome back, {user?.username}!</p>
       </div>
 
       {/* Main Content */}

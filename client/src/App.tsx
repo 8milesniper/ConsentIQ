@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 
 import { WelcomeScreen } from "@/pages/WelcomeScreen";
+import { AuthScreen } from "@/pages/AuthScreen";
+import { Dashboard } from "@/pages/Dashboard";
 import { ConsentSession } from "@/pages/ConsentSession";
 import { ConsentForm } from "@/pages/ConsentForm";
 import { ElementLearnAndEngage } from "@/pages/ElementLearnAndEngage";
@@ -15,6 +17,8 @@ function Router() {
     <Switch>
       {/* ConsentIQ main app flow */}
       <Route path="/" component={WelcomeScreen} />
+      <Route path="/auth" component={AuthScreen} />
+      <Route path="/dashboard" component={Dashboard} />
       <Route path="/consent/new" component={ConsentSession} />
       <Route path="/consent/form/:qrCodeId?" component={ConsentForm} />
       <Route path="/learn" component={ElementLearnAndEngage} />
