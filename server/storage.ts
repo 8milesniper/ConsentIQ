@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type ConsentSession, type InsertConsentSession, type VideoAsset, type InsertVideoAsset } from "@shared/schema";
+import { type User, type SafeUser, type InsertUser, type ConsentSession, type InsertConsentSession, type VideoAsset, type InsertVideoAsset } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 // modify the interface with any CRUD methods
@@ -86,14 +86,45 @@ export class MemStorage implements IStorage {
     return session;
   }
 
-  async getConsentSession(id: string): Promise<ConsentSession | undefined> {
-    return this.consentSessions.get(id);
+  async getConsentSession(id: string): Promise<(ConsentSession & { initiator?: SafeUser }) | undefined> {
+    const session = this.consentSessions.get(id);
+    if (!session) return undefined;
+    
+    // Include only safe initiator information (no password/username)
+    const initiatorUser = await this.getUser(session.initiatorUserId);
+    const initiator: SafeUser | undefined = initiatorUser ? {
+      id: initiatorUser.id,
+      fullName: initiatorUser.fullName,
+      profilePicture: initiatorUser.profilePicture,
+      phoneNumber: initiatorUser.phoneNumber
+    } : undefined;
+    
+    return {
+      ...session,
+      initiator
+    };
   }
 
-  async getConsentSessionByQrCode(qrCodeId: string): Promise<ConsentSession | undefined> {
-    return Array.from(this.consentSessions.values()).find(
+  async getConsentSessionByQrCode(qrCodeId: string): Promise<(ConsentSession & { initiator?: SafeUser }) | undefined> {
+    const session = Array.from(this.consentSessions.values()).find(
       session => session.qrCodeId === qrCodeId
     );
+    
+    if (!session) return undefined;
+    
+    // Include only safe initiator information (no password/username)
+    const initiatorUser = await this.getUser(session.initiatorUserId);
+    const initiator: SafeUser | undefined = initiatorUser ? {
+      id: initiatorUser.id,
+      fullName: initiatorUser.fullName,
+      profilePicture: initiatorUser.profilePicture,
+      phoneNumber: initiatorUser.phoneNumber
+    } : undefined;
+    
+    return {
+      ...session,
+      initiator
+    };
   }
 
   async updateConsentSessionStatus(

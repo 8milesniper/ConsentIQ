@@ -9,7 +9,12 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getConsentSessionByQR, updateConsentSessionStatus, generateUploadUrl, createVideoAsset } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
-import type { ConsentSession as ConsentSessionType } from "@shared/schema";
+import type { ConsentSession as ConsentSessionType, SafeUser } from "@shared/schema";
+
+// Extended type for sessions that include initiator information
+type ConsentSessionWithInitiator = ConsentSessionType & {
+  initiator?: SafeUser;
+};
 
 const consentFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -25,7 +30,7 @@ export const ConsentForm = (): JSX.Element => {
   const [isRecording, setIsRecording] = useState(false);
   const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [recordingTime, setRecordingTime] = useState(0);
-  const [session, setSession] = useState<ConsentSessionType | null>(null);
+  const [session, setSession] = useState<ConsentSessionWithInitiator | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [browserSupported, setBrowserSupported] = useState(true);
   const [compatibilityError, setCompatibilityError] = useState<string | null>(null);
@@ -374,13 +379,24 @@ export const ConsentForm = (): JSX.Element => {
         {/* Content */}
         <div className="flex-1 bg-white rounded-t-3xl p-6">
           <div className="text-center mb-8">
-            <div className="w-20 h-20 mx-auto mb-4 bg-gray-200 rounded-full flex items-center justify-center">
-              {/* Profile avatar placeholder */}
-              <div className="w-16 h-16 bg-gray-400 rounded-full bg-cover bg-center"></div>
+            <div className="w-20 h-20 mx-auto mb-4 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
+              {/* Initiator's actual profile picture */}
+              {session?.initiator?.profilePicture ? (
+                <img 
+                  src={session.initiator.profilePicture} 
+                  alt={session.initiator.fullName || "User"} 
+                  className="w-full h-full object-cover"
+                  data-testid="img-initiator-profile"
+                />
+              ) : (
+                <div className="w-16 h-16 bg-gray-400 rounded-full flex items-center justify-center text-white text-lg font-bold">
+                  {session?.initiator?.fullName?.charAt(0)?.toUpperCase() || "?"}
+                </div>
+              )}
             </div>
             <h2 className="text-xl font-semibold mb-2">You have received a consent request</h2>
             <div className="inline-block bg-[#4ade80] text-white px-4 py-2 rounded-full font-medium">
-              ConsentIQ User
+              {session?.initiator?.fullName || "ConsentIQ User"}
             </div>
           </div>
 
