@@ -27,16 +27,26 @@ function Router() {
 
   return (
     <Switch>
-      {/* ConsentIQ main app flow */}
+      {/* Public routes (no auth required) */}
+      <Route path="/consent/form/:qrCodeId?" component={ConsentForm} />
+      
+      {/* Protected routes (auth required) */}
       <Route path="/">
         {isAuthenticated ? <Redirect to="/dashboard" /> : <AuthScreen />}
       </Route>
       <Route path="/auth" component={AuthScreen} />
-      <Route path="/welcome" component={WelcomeScreen} />
-      <Route path="/dashboard" component={Dashboard} />
-      <Route path="/consent/new" component={ConsentSession} />
-      <Route path="/consent/form/:qrCodeId?" component={ConsentForm} />
-      <Route path="/learn" component={ElementLearnAndEngage} />
+      <Route path="/welcome">
+        {isAuthenticated ? <WelcomeScreen /> : <Redirect to="/auth" />}
+      </Route>
+      <Route path="/dashboard">
+        {isAuthenticated ? <Dashboard /> : <Redirect to="/auth" />}
+      </Route>
+      <Route path="/consent/new">
+        {isAuthenticated ? <ConsentSession /> : <Redirect to="/auth" />}
+      </Route>
+      <Route path="/learn">
+        {isAuthenticated ? <ElementLearnAndEngage /> : <Redirect to="/auth" />}
+      </Route>
       {/* Fallback to 404 */}
       <Route component={NotFound} />
     </Switch>
