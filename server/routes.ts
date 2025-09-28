@@ -194,8 +194,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Consent Session Routes
   
-  // Create new consent session
-  app.post("/api/consent/sessions", async (req, res) => {
+  // Create new consent session (requires authentication)
+  app.post("/api/consent/sessions", requireAuth, async (req, res) => {
     try {
       const sessionData = insertConsentSessionSchema.parse(req.body);
       const session = await storage.createConsentSession(sessionData);
