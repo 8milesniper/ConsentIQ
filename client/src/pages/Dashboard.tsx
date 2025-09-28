@@ -6,8 +6,8 @@ export const Dashboard = (): JSX.Element => {
   const [, setLocation] = useLocation();
   const { user, logout } = useAuth();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     setLocation("/");
   };
 

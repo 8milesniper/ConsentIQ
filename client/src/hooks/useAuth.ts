@@ -10,21 +10,48 @@ export const useAuth = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for stored user on mount
-    const storedUser = localStorage.getItem("consentiq_user");
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (error) {
-        localStorage.removeItem("consentiq_user");
-      }
-    }
-    setIsLoading(false);
+    // Validate session on mount by checking HTTP-only cookie
+    validateSession();
   }, []);
 
-  const logout = () => {
-    localStorage.removeItem("consentiq_user");
-    setUser(null);
+  const validateSession = async () => {
+    try {
+      const response = await fetch("/api/auth/me", {
+        credentials: 'include', // Include HTTP-only cookies
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
+      } else {
+        // Session is invalid
+        setUser(null);
+      }
+    } catch (error) {
+      // Network error or session validation failed
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const setAuthData = (user: User) => {
+    setUser(user);
+    // No token storage needed - handled by HTTP-only cookies
+  };
+
+  const logout = async () => {
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: 'include',
+      });
+    } catch (error) {
+      // Logout endpoint failed, but clear local state anyway
+      console.warn("Logout endpoint failed", error);
+    } finally {
+      setUser(null);
+    }
   };
 
   const isAuthenticated = !!user;
@@ -34,5 +61,6 @@ export const useAuth = () => {
     isAuthenticated,
     isLoading,
     logout,
+    setAuthData,
   };
 };

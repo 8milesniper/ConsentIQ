@@ -9,6 +9,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const loginSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
@@ -40,27 +41,35 @@ export const AuthScreen = (): JSX.Element => {
     defaultValues: { username: "", password: "", confirmPassword: "" },
   });
 
-  // Mock authentication for demo (replace with real API calls)
+  const { setAuthData } = useAuth();
+
   const loginMutation = useMutation({
     mutationFn: async (data: LoginData) => {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: 'include', // Include cookies for secure session
+        body: JSON.stringify(data),
+      });
       
-      // Mock success for demo
-      localStorage.setItem("consentiq_user", JSON.stringify({ 
-        username: data.username,
-        id: "user-123" 
-      }));
-      return { success: true };
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Login failed");
+      }
+      
+      return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      setAuthData(data.user);
       toast({ title: "Welcome back!", description: "Successfully logged in." });
       setLocation("/dashboard");
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({ 
         title: "Login failed", 
-        description: "Invalid username or password.", 
+        description: error.message, 
         variant: "destructive" 
       });
     }
@@ -68,24 +77,34 @@ export const AuthScreen = (): JSX.Element => {
 
   const signupMutation = useMutation({
     mutationFn: async (data: SignupData) => {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: 'include', // Include cookies for secure session
+        body: JSON.stringify({
+          username: data.username,
+          password: data.password,
+        }),
+      });
       
-      // Mock success for demo
-      localStorage.setItem("consentiq_user", JSON.stringify({ 
-        username: data.username,
-        id: "user-" + Date.now() 
-      }));
-      return { success: true };
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Registration failed");
+      }
+      
+      return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      setAuthData(data.user);
       toast({ title: "Account created!", description: "Welcome to ConsentIQ." });
       setLocation("/dashboard");
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({ 
         title: "Signup failed", 
-        description: "Username might already be taken.", 
+        description: error.message, 
         variant: "destructive" 
       });
     }

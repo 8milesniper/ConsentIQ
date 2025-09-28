@@ -1,8 +1,19 @@
-import type { Express } from "express";
+import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertConsentSessionSchema, insertVideoAssetSchema } from "@shared/schema";
+import { insertConsentSessionSchema, insertVideoAssetSchema, insertUserSchema } from "@shared/schema";
 import { z } from "zod";
+import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+import { randomUUID } from "crypto";
+
+// Extend Express Request type to include user
+interface AuthenticatedRequest extends Request {
+  user: {
+    userId: string;
+    username: string;
+  };
+}
 
 // Validation schemas for API requests
 const updateConsentStatusSchema = z.object({
@@ -15,18 +26,172 @@ const uploadUrlRequestSchema = z.object({
   mimeType: z.string().regex(/^video\/(mp4|webm|quicktime|avi)$/, "Unsupported video format"),
 });
 
-// Mock authentication middleware (replace with real auth in production)
-const requireAuth = (req: any, res: any, next: any) => {
-  // In production, verify JWT token or session
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+// JWT secret - REQUIRED environment variable for security
+// For development, provide secure fallback; for production, require explicit setting
+const JWT_SECRET = process.env.JWT_SECRET || 
+  (process.env.NODE_ENV === 'development' 
+    ? 'consent_iq_secure_development_key_2024_random_string_32_chars_min_length_required'
+    : undefined);
+    
+if (!JWT_SECRET) {
+  console.error("❌ SECURITY ERROR: JWT_SECRET environment variable is required for production");
+  console.error("Please set JWT_SECRET to a secure random string (32+ characters)");
+  process.exit(1);
+}
+
+if (process.env.NODE_ENV === 'development' && !process.env.JWT_SECRET) {
+  console.warn("⚠️  Using development JWT secret. Set JWT_SECRET environment variable for production.");
+}
+// TypeScript assertion - safe because we exit above if undefined
+const SECRET = JWT_SECRET as string;
+
+// Authentication middleware - reads from secure HTTP-only cookies
+const requireAuth = (req: Request, res: any, next: any) => {
+  const token = req.cookies?.auth_token;
+  
+  if (!token) {
     res.status(401).json({ error: "Authentication required" });
     return;
   }
-  next();
+
+  try {
+    const decoded = jwt.verify(token, SECRET) as { userId: string; username: string };
+    (req as AuthenticatedRequest).user = decoded;
+    next();
+  } catch (error) {
+    res.status(401).json({ error: "Invalid or expired token" });
+  }
 };
 
+// Validation schemas
+const loginSchema = z.object({
+  username: z.string().min(3),
+  password: z.string().min(6),
+});
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Logout endpoint
+  app.post("/api/auth/logout", (req, res) => {
+    res.clearCookie('auth_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+    });
+    res.json({ success: true });
+  });
+  // Authentication Routes
+  
+  // Register new user
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const validatedData = insertUserSchema.parse(req.body);
+      const { username, password } = validatedData;
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        res.status(409).json({ error: "Username already exists" });
+        return;
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 12);
+      
+      // Create user
+      const user = await storage.createUser({ 
+        username, 
+        password: hashedPassword 
+      });
+
+      // Generate JWT token
+      const token = jwt.sign(
+        { userId: user.id, username: user.username },
+        SECRET,
+        { expiresIn: "7d" }
+      );
+
+      // Set secure HTTP-only cookie instead of sending token in response
+      res.cookie('auth_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
+
+      res.status(201).json({ 
+        user: { id: user.id, username: user.username }
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid registration data", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Registration failed" });
+      }
+    }
+  });
+
+  // Login user
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const validatedData = loginSchema.parse(req.body);
+      const { username, password } = validatedData;
+
+      // Find user
+      const user = await storage.getUserByUsername(username);
+      if (!user) {
+        res.status(401).json({ error: "Invalid username or password" });
+        return;
+      }
+
+      // Verify password
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      if (!isValidPassword) {
+        res.status(401).json({ error: "Invalid username or password" });
+        return;
+      }
+
+      // Generate JWT token
+      const token = jwt.sign(
+        { userId: user.id, username: user.username },
+        SECRET,
+        { expiresIn: "7d" }
+      );
+
+      // Set secure HTTP-only cookie instead of sending token in response
+      res.cookie('auth_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
+
+      res.json({ 
+        user: { id: user.id, username: user.username }
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid login data", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Login failed" });
+      }
+    }
+  });
+
+  // Get current user (requires auth)
+  app.get("/api/auth/me", requireAuth, async (req, res) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      const user = await storage.getUser(authReq.user.userId);
+      if (!user) {
+        res.status(404).json({ error: "User not found" });
+        return;
+      }
+      res.json({ id: user.id, username: user.username });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get user info" });
+    }
+  });
+
   // Consent Session Routes
   
   // Create new consent session
