@@ -5,13 +5,17 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 
+import { WelcomeScreen } from "@/pages/WelcomeScreen";
+import { ConsentSession } from "@/pages/ConsentSession";
 import { ElementLearnAndEngage } from "@/pages/ElementLearnAndEngage";
 
 function Router() {
   return (
     <Switch>
-      {/* Add pages below */}
-      <Route path="/" component={ElementLearnAndEngage} />
+      {/* ConsentIQ main app flow */}
+      <Route path="/" component={WelcomeScreen} />
+      <Route path="/consent/new" component={ConsentSession} />
+      <Route path="/learn" component={ElementLearnAndEngage} />
       {/* Fallback to 404 */}
       <Route component={NotFound} />
     </Switch>
