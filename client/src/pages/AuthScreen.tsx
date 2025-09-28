@@ -80,9 +80,20 @@ export const AuthScreen = (): JSX.Element => {
       return response.json();
     },
     onSuccess: (data) => {
+      console.log("Registration/login successful", data);
       setAuthData(data.user);
-      // Let the router handle redirect after auth state updates
-      setTimeout(() => setLocation("/dashboard"), 100);
+      
+      // Show success message
+      toast({ 
+        title: `${isSignIn ? 'Welcome back!' : 'Account created successfully!'}`, 
+        description: `${isSignIn ? 'You have been signed in.' : 'Redirecting to your dashboard...'}`,
+      });
+      
+      // Redirect to dashboard
+      setTimeout(() => {
+        console.log("Redirecting to dashboard");
+        setLocation("/dashboard");
+      }, 1000);
     },
     onError: (error: Error) => {
       toast({ 
