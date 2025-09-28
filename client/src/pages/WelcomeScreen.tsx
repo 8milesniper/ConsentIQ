@@ -11,20 +11,16 @@ export const WelcomeScreen = (): JSX.Element => {
   // Auto-advance through loading screens
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (currentStep < 3) {
+      if (currentStep < 2) {
         setCurrentStep(currentStep + 1);
-      } else if (currentStep === 3 && !isLoading) {
-        // After loading animation, check authentication
-        if (isAuthenticated) {
-          setLocation("/dashboard");
-        } else {
-          setLocation("/auth");
-        }
+      } else {
+        // Skip authentication check and go directly to main screen
+        setCurrentStep(3);
       }
-    }, 1500);
+    }, 800); // Faster loading
 
     return () => clearTimeout(timer);
-  }, [currentStep, isAuthenticated, isLoading, setLocation]);
+  }, [currentStep, setLocation]);
 
   // Loading screens (steps 0-2)
   if (currentStep <= 2) {

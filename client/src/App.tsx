@@ -16,8 +16,8 @@ function Router() {
   return (
     <Switch>
       {/* ConsentIQ main app flow */}
-      <Route path="/" component={WelcomeScreen} />
-      <Route path="/auth" component={AuthScreen} />
+      <Route path="/" component={AuthScreen} />
+      <Route path="/welcome" component={WelcomeScreen} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/consent/new" component={ConsentSession} />
       <Route path="/consent/form/:qrCodeId?" component={ConsentForm} />
