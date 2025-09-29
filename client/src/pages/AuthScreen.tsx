@@ -32,11 +32,15 @@ export const AuthScreen = (): JSX.Element => {
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isSignIn, setIsSignIn] = useState(false);
 
-  // Redirect immediately if already authenticated
+  // Redirect immediately if already authenticated (with protection against loops)
   useEffect(() => {
     if (isAuthenticated) {
       console.log("User already authenticated, redirecting to dashboard");
-      setLocation("/dashboard");
+      // Add small delay to prevent redirect loops
+      const timer = setTimeout(() => {
+        setLocation("/dashboard");
+      }, 200);
+      return () => clearTimeout(timer);
     }
   }, [isAuthenticated, setLocation]);
 

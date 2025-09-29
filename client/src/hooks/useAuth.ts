@@ -11,7 +11,10 @@ export const useAuth = () => {
 
   useEffect(() => {
     // Validate session on mount by checking HTTP-only cookie
-    validateSession();
+    const timer = setTimeout(() => {
+      validateSession();
+    }, 100); // Small delay to prevent rapid-fire requests
+    return () => clearTimeout(timer);
   }, []);
 
   const validateSession = async () => {
