@@ -473,76 +473,71 @@ export const ConsentForm = (): JSX.Element => {
   // Step 1: Video Recording
   if (currentStep === 1) {
     return (
-      <div className="min-h-screen bg-gray-900 flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 text-white">
-          <button 
-            onClick={() => setCurrentStep(0)}
-            className="w-10 h-10 border border-white rounded-full flex items-center justify-center"
-            data-testid="button-back-to-form"
-          >
-            ←
-          </button>
-          <h1 className="text-xl font-semibold">Video Consent</h1>
-          <div className="text-sm">{Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}</div>
+      <div className="min-h-screen bg-slate-800 flex flex-col items-center text-center px-6">
+        {/* Camera Icon */}
+        <div className="mt-16 mb-8">
+          <svg viewBox="0 0 24 24" className="w-16 h-16 text-white">
+            <path
+              fill="currentColor"
+              d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4zM14 13h-3v3H9v-3H6v-2h3V8h2v3h3v2z"
+            />
+          </svg>
         </div>
+
+        {/* Title */}
+        <h1 className="text-3xl font-bold text-white mb-8">Saying Yes?</h1>
 
         {/* Video Preview */}
-        <div className="flex-1 flex items-center justify-center p-6">
-          <div className="relative w-full max-w-md aspect-[3/4] bg-black rounded-3xl overflow-hidden">
-            <video
-              ref={videoRef}
-              autoPlay
-              muted
-              playsInline
-              className="w-full h-full object-cover"
-              data-testid="video-preview"
-            />
-            
-            {/* Recording indicator */}
-            {isRecording && (
-              <div className="absolute top-4 left-4 flex items-center gap-2 bg-red-600 px-3 py-1 rounded-full">
-                <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
-                <span className="text-white text-sm font-bold">🔴 REC</span>
-              </div>
-            )}
-          </div>
+        <div className="relative w-80 h-80 bg-black rounded-3xl overflow-hidden mb-8">
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            playsInline
+            className="w-full h-full object-cover"
+            data-testid="video-preview"
+          />
+          
+          {/* Recording indicator */}
+          {isRecording && (
+            <div className="absolute top-4 left-4 flex items-center gap-2 bg-red-600 px-3 py-1 rounded-full">
+              <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
+              <span className="text-white text-sm font-bold">🔴 REC</span>
+            </div>
+          )}
         </div>
 
-        {/* Controls */}
-        <div className="p-6">
-          <div className="text-center mb-6">
-            <h2 className="text-white text-xl font-semibold mb-2">Record Your Consent</h2>
-            <p className="text-gray-300 text-sm">
-              Please record a clear video stating your consent decision
-            </p>
-          </div>
+        {/* Record Button */}
+        {!isRecording ? (
+          <Button
+            onClick={startRecording}
+            className="w-full max-w-sm bg-[#22c55e] hover:bg-[#16a34a] text-white font-semibold py-4 rounded-2xl mb-6 flex items-center justify-center gap-3"
+            data-testid="button-start-recording"
+          >
+            <svg viewBox="0 0 24 24" className="w-6 h-6">
+              <path
+                fill="currentColor"
+                d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"
+              />
+            </svg>
+            Click to Start Recording
+          </Button>
+        ) : (
+          <Button
+            onClick={stopRecording}
+            className="w-full max-w-sm bg-red-600 hover:bg-red-700 text-white font-semibold py-4 rounded-2xl mb-6 animate-pulse"
+            data-testid="button-stop-recording"
+          >
+            🔴 Stop Recording
+          </Button>
+        )}
 
-          <div className="flex justify-center">
-            {!isRecording ? (
-              <div className="text-center">
-                <Button
-                  onClick={startRecording}
-                  className="w-24 h-24 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center mb-2"
-                  data-testid="button-start-recording"
-                >
-                  <div className="w-8 h-8 bg-white rounded-full"></div>
-                </Button>
-                <p className="text-white text-sm font-medium">Tap to Record</p>
-              </div>
-            ) : (
-              <div className="text-center">
-                <Button
-                  onClick={stopRecording}
-                  className="w-24 h-24 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center animate-pulse mb-2 ring-4 ring-red-300"
-                  data-testid="button-stop-recording"
-                >
-                  <div className="w-8 h-8 bg-white"></div>
-                </Button>
-                <p className="text-red-400 text-sm font-bold animate-pulse">🔴 RECORDING - Tap to Stop</p>
-              </div>
-            )}
-          </div>
+        {/* Instructions */}
+        <div className="text-white text-center max-w-sm">
+          <p className="text-lg font-medium mb-3">State your name and your positive consent.</p>
+          <p className="text-sm text-gray-300">
+            This video is private, stored securely, never shared. The other person will receive a confirmation text.
+          </p>
         </div>
       </div>
     );
@@ -609,44 +604,27 @@ export const ConsentForm = (): JSX.Element => {
 
   // Step 3: Completion
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center px-6">
-      <div className="max-w-md w-full text-center">
-        <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-8 ${
-          session?.consentStatus === "granted" ? "bg-green-500" : "bg-red-500"
-        }`}>
-          <svg viewBox="0 0 24 24" className="w-12 h-12 text-white">
-            {session?.consentStatus === "granted" ? (
+    <div className="min-h-screen bg-slate-800 flex flex-col items-center justify-center px-6">
+      <div className="max-w-sm w-full">
+        {/* Card Container */}
+        <div className="bg-slate-700 rounded-3xl p-8 text-center border border-slate-600">
+          {/* Green Checkmark Icon */}
+          <div className="w-16 h-16 bg-[#22c55e] rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg viewBox="0 0 24 24" className="w-8 h-8 text-white">
               <path
                 fill="currentColor"
                 d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"
               />
-            ) : (
-              <path
-                fill="currentColor"
-                d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
-              />
-            )}
-          </svg>
-        </div>
-        
-        <h2 className="text-3xl font-bold text-gray-900 mb-4">
-          {session?.consentStatus === "granted" ? "Consent Granted" : "Response Recorded"}
-        </h2>
-        
-        <p className="text-gray-600 mb-4">
-          Your response has been recorded and sent securely.
-        </p>
-        
-        {session && (
-          <div className="bg-gray-50 p-4 rounded-lg mb-8 text-sm text-left">
-            <p><strong>Session:</strong> {session.id.slice(0, 8)}...</p>
-            <p><strong>Status:</strong> {session.consentStatus}</p>
-            <p><strong>Time:</strong> {new Date().toLocaleString()}</p>
+            </svg>
           </div>
-        )}
-        
-        <div className="text-sm text-gray-500">
-          <p>This window can now be closed.</p>
+          
+          {/* Title */}
+          <h2 className="text-2xl font-bold text-white mb-4">Consent Recorded</h2>
+          
+          {/* Subtitle */}
+          <p className="text-gray-300 leading-relaxed">
+            Your consent has been successfully recorded and verified.
+          </p>
         </div>
       </div>
     </div>
