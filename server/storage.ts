@@ -15,10 +15,13 @@ export interface IStorage {
   getConsentSession(id: string): Promise<ConsentSession | undefined>;
   getConsentSessionByQrCode(qrCodeId: string): Promise<ConsentSession | undefined>;
   updateConsentSessionStatus(id: string, status: "pending" | "granted" | "denied" | "revoked", videoAssetId?: string): Promise<ConsentSession | undefined>;
+  updateConsentVerification(id: string, buttonChoice: "granted" | "denied", aiAnalysisResult: string, hasAudioMismatch: boolean): Promise<ConsentSession | undefined>;
+  updateAiAnalysisResult(id: string, aiAnalysisResult: string): Promise<ConsentSession | undefined>;
   
   // Video asset management  
   createVideoAsset(asset: InsertVideoAsset): Promise<VideoAsset>;
   getVideoAsset(id: string): Promise<VideoAsset | undefined>;
+  updateVideoTranscript(id: string, transcript: string, confidence: number): Promise<VideoAsset | undefined>;
   
   // Upload URL generation (for secure video uploads)
   generateUploadUrl(filename: string, mimeType: string): Promise<{ uploadUrl: string; storageKey: string }>;
@@ -80,6 +83,11 @@ export class MemStorage implements IStorage {
       consentGrantedTime: null,
       consentRevokedTime: null,
       retentionUntil,
+      verificationStatus: "pending",
+      aiAnalysisResult: null,
+      hasAudioMismatch: false,
+      verifiedAt: null,
+      buttonChoice: null,
     };
     
     this.consentSessions.set(id, session);
@@ -164,9 +172,12 @@ export class MemStorage implements IStorage {
       duration: insertAsset.duration || null,
       resolution: insertAsset.resolution || null,
       storageKey: insertAsset.storageKey,
-      isEncrypted: insertAsset.isEncrypted || true,
+      isEncrypted: insertAsset.isEncrypted !== undefined ? insertAsset.isEncrypted : true,
       checksum: insertAsset.checksum || null,
       uploadedAt: new Date(),
+      transcript: null,
+      transcriptionConfidence: null,
+      transcribedAt: null,
     };
 
     this.videoAssets.set(id, videoAsset);
@@ -175,6 +186,57 @@ export class MemStorage implements IStorage {
 
   async getVideoAsset(id: string): Promise<VideoAsset | undefined> {
     return this.videoAssets.get(id);
+  }
+
+  async updateVideoTranscript(id: string, transcript: string, confidence: number): Promise<VideoAsset | undefined> {
+    const videoAsset = this.videoAssets.get(id);
+    if (!videoAsset) return undefined;
+
+    const updatedAsset: VideoAsset = {
+      ...videoAsset,
+      transcript,
+      transcriptionConfidence: confidence,
+      transcribedAt: new Date(),
+    };
+
+    this.videoAssets.set(id, updatedAsset);
+    return updatedAsset;
+  }
+
+  async updateConsentVerification(
+    id: string, 
+    buttonChoice: "granted" | "denied", 
+    aiAnalysisResult: string, 
+    hasAudioMismatch: boolean
+  ): Promise<ConsentSession | undefined> {
+    const session = this.consentSessions.get(id);
+    if (!session) return undefined;
+
+    const updatedSession: ConsentSession = {
+      ...session,
+      buttonChoice,
+      aiAnalysisResult,
+      hasAudioMismatch,
+      verificationStatus: hasAudioMismatch ? "mismatch" : "verified",
+      verifiedAt: new Date(),
+    };
+
+    this.consentSessions.set(id, updatedSession);
+    return updatedSession;
+  }
+
+  async updateAiAnalysisResult(id: string, aiAnalysisResult: string): Promise<ConsentSession | undefined> {
+    const session = this.consentSessions.get(id);
+    if (!session) return undefined;
+
+    const updatedSession: ConsentSession = {
+      ...session,
+      aiAnalysisResult,
+      // Don't update verification status or other fields - just store the AI result
+    };
+
+    this.consentSessions.set(id, updatedSession);
+    return updatedSession;
   }
 
   // Upload URL generation (mock implementation for development)

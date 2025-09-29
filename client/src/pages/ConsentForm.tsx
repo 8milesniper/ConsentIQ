@@ -49,7 +49,7 @@ export const ConsentForm = (): JSX.Element => {
   });
 
   // Fetch consent session by QR code
-  const { data: sessionData, isLoading: isLoadingSession, error: sessionError } = useQuery({
+  const { data: sessionData, isLoading: isLoadingSession, error: sessionError, refetch } = useQuery({
     queryKey: ['consent-session-qr', qrCodeId],
     queryFn: () => qrCodeId ? getConsentSessionByQR(qrCodeId) : null,
     enabled: !!qrCodeId,
@@ -240,9 +240,35 @@ export const ConsentForm = (): JSX.Element => {
       return;
     }
 
+    await handleConsentDecision("granted");
+  };
+
+  const handleDenyConsent = async () => {
+    if (!videoBlob || !session) {
+      toast({ 
+        title: "Missing data", 
+        description: "Video recording or session data is missing", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    await handleConsentDecision("denied");
+  };
+
+  const handleConsentDecision = async (buttonChoice: "granted" | "denied") => {
+    if (!videoBlob || !session) {
+      toast({ 
+        title: "Missing data", 
+        description: "Video recording or session data is missing", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      // Strip codec parameters from MIME type and determine correct file extension
+      // Step 1: Upload and create video asset
       const baseMimeType = videoBlob.type.split(';')[0]; // Remove ;codecs=... part
       const fileExtension = baseMimeType === 'video/mp4' ? 'mp4' : 'webm';
       const filename = `consent-video-${Date.now()}.${fileExtension}`;
@@ -267,32 +293,75 @@ export const ConsentForm = (): JSX.Element => {
       // Create video asset record
       const videoAsset = await createVideoAsset({
         filename,
-        mimeType: baseMimeType, // Use stripped MIME type
+        mimeType: baseMimeType,
         fileSize: videoBlob.size,
         storageKey,
         isEncrypted: true,
       });
 
-      // Update consent status to granted with video asset
-      updateStatusMutation.mutate({ status: "granted", videoAssetId: videoAsset.id });
+      // Step 2: Process video with AI analysis
+      const formData = new FormData();
+      formData.append('video', videoBlob, filename);
+      formData.append('sessionId', session.id);
+      formData.append('videoAssetId', videoAsset.id);
+
+      const processResponse = await fetch('/api/consent/process-video', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      });
+
+      if (!processResponse.ok) {
+        throw new Error('Video processing failed');
+      }
+
+      const processResult = await processResponse.json();
+      console.log('AI Analysis Result:', processResult);
+
+      // Step 3: Verify consent decision against AI analysis
+      const verifyResponse = await fetch('/api/consent/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionId: session.id,
+          buttonChoice,
+          videoAssetId: videoAsset.id,
+        }),
+        credentials: 'include'
+      });
+
+      if (!verifyResponse.ok) {
+        throw new Error('Consent verification failed');
+      }
+
+      const verifyResult = await verifyResponse.json();
+      console.log('Verification Result:', verifyResult);
+
+      // Show mismatch warning if detected
+      if (verifyResult.hasAudioMismatch) {
+        toast({
+          title: "⚠️ Audio Mismatch Detected",
+          description: `Your video indicates "${verifyResult.aiAnalysisResult === 'CONSENT_GRANTED' ? 'consent' : 'no consent'}" but you clicked "${buttonChoice}". Your button choice will be recorded.`,
+          variant: "destructive",
+          duration: 8000,
+        });
+      }
+
+      // Update session status (the verification already handled this)
+      setCurrentStep(3); // Move to completion step
+      
+      // Refetch session to get updated data
+      refetch();
+
     } catch (error) {
-      console.error('Failed to grant consent:', error);
+      console.error('Failed to process consent:', error);
       toast({ 
         title: "Failed to record consent", 
         description: error instanceof Error ? error.message : "Unknown error", 
         variant: "destructive" 
       });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDenyConsent = async () => {
-    if (!session) return;
-    
-    setIsSubmitting(true);
-    try {
-      updateStatusMutation.mutate({ status: "denied" });
     } finally {
       setIsSubmitting(false);
     }

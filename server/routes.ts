@@ -6,6 +6,10 @@ import { z } from "zod";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
+import { analyzeConsentVideo, transcribeAudio, determineAudioMismatch, scaleConfidence } from "./speechService";
+import multer from "multer";
+import * as fs from "fs";
+import * as path from "path";
 
 // Extend Express Request type to include user
 interface AuthenticatedRequest extends Request {
@@ -19,6 +23,25 @@ interface AuthenticatedRequest extends Request {
 const updateConsentStatusSchema = z.object({
   status: z.enum(["pending", "granted", "denied", "revoked"]),
   videoAssetId: z.string().optional(),
+});
+
+const verifyConsentSchema = z.object({
+  sessionId: z.string(),
+  buttonChoice: z.enum(["granted", "denied"]),
+  videoAssetId: z.string(),
+});
+
+// Set up multer for video file uploads
+const upload = multer({ 
+  dest: 'uploads/',
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit
+  fileFilter: (req: any, file: any, cb: any) => {
+    if (file.mimetype.startsWith('video/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only video files are allowed'));
+    }
+  }
 });
 
 const uploadUrlRequestSchema = z.object({
@@ -357,6 +380,167 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(500).json({ error: "Upload failed" });
       }
     });
+  }
+
+  // Speech Processing & Verification Endpoints
+  
+  // Process video for transcription and AI analysis
+  app.post("/api/consent/process-video", upload.single('video'), async (req, res) => {
+    try {
+      if (!req.file) {
+        res.status(400).json({ error: "No video file provided" });
+        return;
+      }
+
+      const videoPath = req.file.path;
+      const { sessionId, videoAssetId } = req.body;
+
+      if (!sessionId || !videoAssetId) {
+        res.status(400).json({ error: "Session ID and Video Asset ID required" });
+        return;
+      }
+
+      // Get the consent session
+      const consentSession = await storage.getConsentSession(sessionId);
+      if (!consentSession) {
+        fs.unlinkSync(videoPath); // Clean up
+        res.status(404).json({ error: "Consent session not found" });
+        return;
+      }
+
+      // Get the video asset
+      const videoAsset = await storage.getVideoAsset(videoAssetId);
+      if (!videoAsset) {
+        fs.unlinkSync(videoPath); // Clean up
+        res.status(404).json({ error: "Video asset not found" });
+        return;
+      }
+
+      console.log(`Processing video for session ${sessionId}...`);
+
+      // Extract audio from video and transcribe with Gemini
+      const audioBuffer = require('fs').readFileSync(videoPath);
+      const transcriptionResult = await transcribeAudio(audioBuffer, req.file.mimetype);
+      const scaledTranscriptionConfidence = scaleConfidence(transcriptionResult.confidence);
+      
+      console.log(`Transcription: ${transcriptionResult.transcript} (confidence: ${scaledTranscriptionConfidence}%)`);
+
+      // Store transcript in video asset
+      await storage.updateVideoTranscript(
+        videoAssetId,
+        transcriptionResult.transcript,
+        scaledTranscriptionConfidence
+      );
+
+      // Analyze video with Gemini AI for consent decision
+      const analysisResult = await analyzeConsentVideo(videoPath, req.file.mimetype);
+      const scaledAnalysisConfidence = scaleConfidence(analysisResult.confidence);
+      
+      console.log(`AI Analysis: ${JSON.stringify(analysisResult)}`);
+
+      // Store ONLY the AI analysis result without corrupting verification state
+      await storage.updateAiAnalysisResult(sessionId, analysisResult.decision);
+
+      // Clean up uploaded file
+      fs.unlinkSync(videoPath);
+
+      res.json({
+        success: true,
+        analysis: {
+          decision: analysisResult.decision,
+          confidence: scaledAnalysisConfidence,
+          reasoning: analysisResult.reasoning
+        },
+        transcription: {
+          transcript: transcriptionResult.transcript,
+          confidence: scaledTranscriptionConfidence
+        },
+        sessionId,
+        videoAssetId
+      });
+
+    } catch (error) {
+      console.error('Video processing error:', error);
+      // Clean up file on error
+      if (req.file?.path) {
+        try { fs.unlinkSync(req.file.path); } catch (e) { /* ignore */ }
+      }
+      res.status(500).json({ error: "Video processing failed" });
+    }
+  });
+
+  // Verify consent decision against AI analysis
+  app.post("/api/consent/verify", async (req, res) => {
+    try {
+      const validation = verifyConsentSchema.safeParse(req.body);
+      if (!validation.success) {
+        res.status(400).json({ error: "Invalid request data", details: validation.error.issues });
+        return;
+      }
+
+      const { sessionId, buttonChoice, videoAssetId } = validation.data;
+
+      // Get current session with stored AI analysis
+      const session = await storage.getConsentSession(sessionId);
+      if (!session) {
+        res.status(404).json({ error: "Consent session not found" });
+        return;
+      }
+
+      // Check if AI analysis was performed (should be stored from process-video step)
+      if (!session.aiAnalysisResult) {
+        res.status(400).json({ error: "Video must be processed before verification. AI analysis not found." });
+        return;
+      }
+
+      // Get video asset for confidence data
+      const videoAsset = await storage.getVideoAsset(videoAssetId);
+      const confidence = videoAsset?.transcriptionConfidence || 0;
+      
+      // Use stored AI analysis result to determine mismatch
+      const hasAudioMismatch = determineAudioMismatch(
+        session.aiAnalysisResult, 
+        buttonChoice, 
+        confidence
+      );
+
+      console.log(`Verification: AI says "${session.aiAnalysisResult}", user clicked "${buttonChoice}", confidence: ${confidence}%, mismatch: ${hasAudioMismatch}`);
+
+      // Update session with final verification results
+      const updatedSession = await storage.updateConsentVerification(
+        sessionId,
+        buttonChoice,
+        session.aiAnalysisResult, // Keep existing AI result
+        hasAudioMismatch
+      );
+
+      if (!updatedSession) {
+        res.status(500).json({ error: "Failed to update session verification" });
+        return;
+      }
+
+      // Update consent status based on button choice (regardless of mismatch)
+      await storage.updateConsentSessionStatus(sessionId, buttonChoice, videoAssetId);
+
+      res.json({
+        success: true,
+        hasAudioMismatch,
+        aiAnalysisResult: session.aiAnalysisResult,
+        buttonChoice,
+        confidence,
+        verificationStatus: hasAudioMismatch ? "mismatch" : "verified",
+        session: updatedSession
+      });
+
+    } catch (error) {
+      console.error('Consent verification error:', error);
+      res.status(500).json({ error: "Consent verification failed" });
+    }
+  });
+
+  // Ask for Gemini API key if not provided
+  if (!process.env.GEMINI_API_KEY) {
+    console.warn("⚠️  GEMINI_API_KEY not found. Speech verification features will be limited.");
   }
 
   const httpServer = createServer(app);

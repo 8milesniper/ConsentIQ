@@ -28,7 +28,7 @@ export const videoAssets = pgTable("video_assets", {
   isEncrypted: boolean("is_encrypted").notNull().default(true),
   checksum: text("checksum"), // for integrity verification
   transcript: text("transcript"), // speech-to-text result
-  transcriptionConfidence: integer("transcription_confidence"), // 0-100 confidence score
+  transcriptionConfidence: integer("transcription_confidence"), // 0-100 confidence score (scaled from 0-1)
   transcribedAt: timestamp("transcribed_at"),
 });
 
