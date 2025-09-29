@@ -36,7 +36,8 @@ const upload = multer({
   dest: 'uploads/',
   limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit
   fileFilter: (req: any, file: any, cb: any) => {
-    if (file.mimetype.startsWith('video/')) {
+    console.log('File upload - MIME type:', file.mimetype, 'Original name:', file.originalname);
+    if (file.mimetype.startsWith('video/') || file.mimetype === 'application/octet-stream') {
       cb(null, true);
     } else {
       cb(new Error('Only video files are allowed'));
