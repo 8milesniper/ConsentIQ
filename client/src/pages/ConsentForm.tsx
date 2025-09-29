@@ -565,7 +565,7 @@ export const ConsentForm = (): JSX.Element => {
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Final Step</h2>
             <p className="text-gray-600 mb-6">
-              Your video has been recorded. Please confirm your consent decision.
+              Your video has been recorded and stored securely at ConsentHQ. It will never be shared. Please confirm your consent decision.
             </p>
 
             {videoBlob && (
@@ -619,11 +619,13 @@ export const ConsentForm = (): JSX.Element => {
           </div>
           
           {/* Title */}
-          <h2 className="text-2xl font-bold text-white mb-4">Consent Recorded</h2>
+          <h2 className="text-2xl font-bold text-white mb-4">
+            {session?.consentStatus === "granted" ? "Consent Granted" : "Consent Declined"}
+          </h2>
           
           {/* Subtitle */}
           <p className="text-gray-300 leading-relaxed">
-            Your consent has been successfully recorded and verified.
+            Your recording is securely stored at ConsentHQ. A verification text has been sent.
           </p>
         </div>
       </div>
