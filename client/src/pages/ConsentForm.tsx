@@ -301,7 +301,9 @@ export const ConsentForm = (): JSX.Element => {
 
       // Step 2: Process video with AI analysis
       const formData = new FormData();
-      formData.append('video', videoBlob, filename);
+      // Create a File object with the correct MIME type
+      const videoFile = new File([videoBlob], filename, { type: baseMimeType });
+      formData.append('video', videoFile);
       formData.append('sessionId', session.id);
       formData.append('videoAssetId', videoAsset.id);
 
