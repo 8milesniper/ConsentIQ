@@ -34,7 +34,9 @@ function Router() {
       <Route path="/">
         {isAuthenticated ? <Redirect to="/dashboard" /> : <AuthScreen />}
       </Route>
-      <Route path="/auth" component={AuthScreen} />
+      <Route path="/auth">
+        {isAuthenticated ? <Redirect to="/dashboard" /> : <AuthScreen />}
+      </Route>
       <Route path="/welcome">
         {isAuthenticated ? <WelcomeScreen /> : <Redirect to="/auth" />}
       </Route>
