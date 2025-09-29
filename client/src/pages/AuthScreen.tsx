@@ -89,11 +89,9 @@ export const AuthScreen = (): JSX.Element => {
         description: `${isSignIn ? 'You have been signed in.' : 'Redirecting to your dashboard...'}`,
       });
       
-      // Redirect to dashboard
-      setTimeout(() => {
-        console.log("Redirecting to dashboard");
-        setLocation("/dashboard");
-      }, 1000);
+      // Immediate redirect - don't wait for timeout
+      console.log("Redirecting to dashboard immediately");
+      setLocation("/dashboard");
     },
     onError: (error: Error) => {
       toast({ 
