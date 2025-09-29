@@ -4,6 +4,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const consentStatusEnum = pgEnum("consent_status", ["pending", "granted", "denied", "revoked"]);
+export const verificationStatusEnum = pgEnum("verification_status", ["pending", "verified", "mismatch", "unclear", "failed"]);
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -26,6 +27,9 @@ export const videoAssets = pgTable("video_assets", {
   uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
   isEncrypted: boolean("is_encrypted").notNull().default(true),
   checksum: text("checksum"), // for integrity verification
+  transcript: text("transcript"), // speech-to-text result
+  transcriptionConfidence: integer("transcription_confidence"), // 0-100 confidence score
+  transcribedAt: timestamp("transcribed_at"),
 });
 
 export const consentSessions = pgTable("consent_sessions", {
@@ -42,6 +46,11 @@ export const consentSessions = pgTable("consent_sessions", {
   videoAssetId: varchar("video_asset_id").references(() => videoAssets.id),
   retentionUntil: timestamp("retention_until").notNull(), // must be calculated from deleteAfterDays
   deleteAfterDays: integer("delete_after_days").notNull().default(90), // configurable retention period
+  verificationStatus: verificationStatusEnum("verification_status").notNull().default("pending"),
+  aiAnalysisResult: text("ai_analysis_result"), // CONSENT_GRANTED, CONSENT_DENIED, UNCLEAR
+  hasAudioMismatch: boolean("has_audio_mismatch").default(false), // true if audio doesn't match button choice
+  verifiedAt: timestamp("verified_at"),
+  buttonChoice: text("button_choice"), // "granted" or "denied" - what user actually clicked
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
