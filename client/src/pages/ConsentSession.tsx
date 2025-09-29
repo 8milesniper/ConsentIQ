@@ -16,7 +16,7 @@ export const ConsentSession = (): JSX.Element => {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
 
   // Generate unique QR code ID
   const generateQrCodeId = () => {
@@ -87,10 +87,12 @@ export const ConsentSession = (): JSX.Element => {
     createSessionMutation.mutate(sessionData);
   };
 
-  // Initialize session
+  // Initialize session after auth is loaded
   useEffect(() => {
-    createSession();
-  }, []);
+    if (!isLoading) {
+      createSession();
+    }
+  }, [isLoading]);
 
   const handleGenerateNewCode = () => {
     setStatus("generating");
