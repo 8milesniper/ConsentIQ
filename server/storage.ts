@@ -299,8 +299,26 @@ export class PostgresStorage implements IStorage {
   }
 
   async getConsentSessionByQrCode(qrCodeId: string): Promise<ConsentSession | undefined> {
-    const result = await this.db.select().from(consentSessions).where(eq(consentSessions.qrCodeId, qrCodeId)).limit(1);
-    return result[0];
+    const result = await this.db.select({
+      session: consentSessions,
+      initiator: users
+    }).from(consentSessions)
+    .leftJoin(users, eq(consentSessions.initiatorUserId, users.id))
+    .where(eq(consentSessions.qrCodeId, qrCodeId)).limit(1);
+    
+    if (result[0]) {
+      return {
+        ...result[0].session,
+        initiator: result[0].initiator ? {
+          id: result[0].initiator.id,
+          fullName: result[0].initiator.fullName,
+          profilePicture: result[0].initiator.profilePicture,
+          phoneNumber: result[0].initiator.phoneNumber
+        } : undefined
+      } as any;
+    }
+    
+    return undefined;
   }
 
   async updateConsentSessionStatus(id: string, status: "pending" | "granted" | "denied" | "revoked", videoAssetId?: string): Promise<ConsentSession | undefined> {
