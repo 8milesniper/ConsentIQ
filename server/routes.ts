@@ -432,7 +432,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Processing video for session ${sessionId}...`);
 
       // Extract audio from video and transcribe with Gemini
-      const audioBuffer = require('fs').readFileSync(videoPath);
+      const audioBuffer = fs.readFileSync(videoPath);
       const transcriptionResult = await transcribeAudio(audioBuffer, req.file.mimetype);
       const scaledTranscriptionConfidence = scaleConfidence(transcriptionResult.confidence);
       
