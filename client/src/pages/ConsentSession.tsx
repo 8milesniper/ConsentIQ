@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createConsentSession, getConsentSession } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { QRCode } from "@/components/QRCode";
 import type { ConsentSession as ConsentSessionType } from "@shared/schema";
 
