@@ -28,9 +28,17 @@ type SignInData = z.infer<typeof signInSchema>;
 export const AuthScreen = (): JSX.Element => {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { setAuthData } = useAuth();
+  const { setAuthData, isAuthenticated } = useAuth();
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isSignIn, setIsSignIn] = useState(false);
+
+  // Redirect immediately if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      console.log("User already authenticated, redirecting to dashboard");
+      setLocation("/dashboard");
+    }
+  }, [isAuthenticated, setLocation]);
 
   const form = useForm<CreateAccountData | SignInData>({
     resolver: zodResolver(isSignIn ? signInSchema : createAccountSchema),
