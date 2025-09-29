@@ -18,7 +18,6 @@ type ConsentSessionWithInitiator = ConsentSessionType & {
 
 const consentFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  phone: z.string().optional(),
   isOver18: z.literal(true, { errorMap: () => ({ message: "You must be over 18 to continue" }) }),
 });
 
@@ -45,7 +44,6 @@ export const ConsentForm = (): JSX.Element => {
     resolver: zodResolver(consentFormSchema),
     defaultValues: {
       name: "",
-      phone: "",
       isOver18: false as any,
     },
   });
@@ -424,27 +422,6 @@ export const ConsentForm = (): JSX.Element => {
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem className="mt-6">
-                      <FormLabel>A friend's phone number (optional)</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="+1 415 345 678" 
-                          className="border-0 border-b border-gray-300 rounded-none bg-transparent focus:border-[#4ade80] focus-visible:ring-0"
-                          {...field}
-                          data-testid="input-phone"
-                        />
-                      </FormControl>
-                      <p className="text-sm text-gray-500 mt-1">
-                        We'll ask if you'd like someone you trust to check up on you.
-                      </p>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
 
                 <div className="flex items-center justify-between mt-8">
                   <span className="text-lg">Are you over 18?</span>
