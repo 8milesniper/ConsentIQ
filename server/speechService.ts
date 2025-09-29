@@ -4,6 +4,7 @@
 //   - do not change this unless explicitly requested by the user
 
 import { GoogleGenAI } from "@google/genai";
+import fs from "fs";
 
 // This API key is from Gemini Developer API Key, not vertex AI API Key
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
@@ -62,7 +63,7 @@ UNCLEAR: Mumbled, unclear, contradictory, or missing audio/video`;
       contents: [
         {
           inlineData: {
-            data: require('fs').readFileSync(videoPath).toString('base64'),
+            data: fs.readFileSync(videoPath).toString('base64'),
             mimeType: videoMimeType,
           },
         },
