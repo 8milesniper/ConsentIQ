@@ -193,7 +193,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       res.json({ 
-        user: { id: user.id, username: user.username }
+        user: { 
+          id: user.id, 
+          username: user.username,
+          fullName: user.fullName,
+          phoneNumber: user.phoneNumber,
+          profilePicture: user.profilePicture
+        }
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -213,7 +219,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(404).json({ error: "User not found" });
         return;
       }
-      res.json({ id: user.id, username: user.username });
+      res.json({ 
+        id: user.id, 
+        username: user.username,
+        fullName: user.fullName,
+        phoneNumber: user.phoneNumber,
+        profilePicture: user.profilePicture
+      });
     } catch (error) {
       res.status(500).json({ error: "Failed to get user info" });
     }

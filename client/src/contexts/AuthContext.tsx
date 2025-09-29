@@ -3,6 +3,9 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 interface User {
   id: string;
   username: string;
+  fullName?: string | null;
+  phoneNumber?: string | null;
+  profilePicture?: string | null;
 }
 
 interface AuthContextType {
