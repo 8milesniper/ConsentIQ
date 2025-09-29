@@ -210,14 +210,6 @@ export const ConsentSession = (): JSX.Element => {
                 </p>
                 
                 
-                <Button
-                  onClick={handleGenerateNewCode}
-                  variant="outline"
-                  className="w-full py-3 rounded-full border-2 border-green-300 text-green-700 font-semibold hover:bg-green-50"
-                  data-testid="button-generate-code"
-                >
-                  🆕 Start New Test Session
-                </Button>
                 
               </div>
             ) : (
