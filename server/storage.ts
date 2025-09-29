@@ -1,5 +1,8 @@
-import { type User, type SafeUser, type InsertUser, type ConsentSession, type InsertConsentSession, type VideoAsset, type InsertVideoAsset } from "@shared/schema";
+import { type User, type SafeUser, type InsertUser, type ConsentSession, type InsertConsentSession, type VideoAsset, type InsertVideoAsset, users, consentSessions, videoAssets } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { drizzle } from "drizzle-orm/neon-http";
+import { neon } from "@neondatabase/serverless";
+import { eq } from "drizzle-orm";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -250,4 +253,126 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// PostgreSQL Storage Implementation
+export class PostgresStorage implements IStorage {
+  private db: ReturnType<typeof drizzle>;
+
+  constructor() {
+    if (!process.env.DATABASE_URL) {
+      throw new Error("DATABASE_URL environment variable is required");
+    }
+    const sql = neon(process.env.DATABASE_URL);
+    this.db = drizzle(sql);
+  }
+
+  async getUser(id: string): Promise<User | undefined> {
+    const result = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const result = await this.db.select().from(users).where(eq(users.username, username)).limit(1);
+    return result[0];
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const result = await this.db.insert(users).values([insertUser]).returning();
+    return result[0];
+  }
+
+  async createConsentSession(session: InsertConsentSession): Promise<ConsentSession> {
+    // Calculate retention date from deleteAfterDays
+    const retentionUntil = new Date(Date.now() + ((session.deleteAfterDays || 90) * 24 * 60 * 60 * 1000));
+    
+    const sessionWithRetention = {
+      ...session,
+      retentionUntil
+    };
+    
+    const result = await this.db.insert(consentSessions).values([sessionWithRetention]).returning();
+    return result[0];
+  }
+
+  async getConsentSession(id: string): Promise<ConsentSession | undefined> {
+    const result = await this.db.select().from(consentSessions).where(eq(consentSessions.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getConsentSessionByQrCode(qrCodeId: string): Promise<ConsentSession | undefined> {
+    const result = await this.db.select().from(consentSessions).where(eq(consentSessions.qrCodeId, qrCodeId)).limit(1);
+    return result[0];
+  }
+
+  async updateConsentSessionStatus(id: string, status: "pending" | "granted" | "denied" | "revoked", videoAssetId?: string): Promise<ConsentSession | undefined> {
+    const updateData: any = { consentStatus: status };
+    if (videoAssetId) {
+      updateData.videoAssetId = videoAssetId;
+    }
+    if (status === "granted") {
+      updateData.consentGrantedTime = new Date();
+    } else if (status === "revoked") {
+      updateData.consentRevokedTime = new Date();
+    }
+
+    const result = await this.db.update(consentSessions)
+      .set(updateData)
+      .where(eq(consentSessions.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async updateConsentVerification(id: string, buttonChoice: "granted" | "denied", aiAnalysisResult: string, hasAudioMismatch: boolean): Promise<ConsentSession | undefined> {
+    const result = await this.db.update(consentSessions)
+      .set({
+        buttonChoice,
+        aiAnalysisResult,
+        hasAudioMismatch,
+        verificationStatus: hasAudioMismatch ? "mismatch" : "verified",
+        verifiedAt: new Date(),
+      })
+      .where(eq(consentSessions.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async updateAiAnalysisResult(id: string, aiAnalysisResult: string): Promise<ConsentSession | undefined> {
+    const result = await this.db.update(consentSessions)
+      .set({ aiAnalysisResult })
+      .where(eq(consentSessions.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async createVideoAsset(asset: InsertVideoAsset): Promise<VideoAsset> {
+    const result = await this.db.insert(videoAssets).values([asset]).returning();
+    return result[0];
+  }
+
+  async getVideoAsset(id: string): Promise<VideoAsset | undefined> {
+    const result = await this.db.select().from(videoAssets).where(eq(videoAssets.id, id)).limit(1);
+    return result[0];
+  }
+
+  async updateVideoTranscript(id: string, transcript: string, confidence: number): Promise<VideoAsset | undefined> {
+    const result = await this.db.update(videoAssets)
+      .set({
+        transcript,
+        transcriptionConfidence: confidence,
+        transcribedAt: new Date(),
+      })
+      .where(eq(videoAssets.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async generateUploadUrl(filename: string, mimeType: string): Promise<{ uploadUrl: string; storageKey: string }> {
+    // For development/demo, we'll return a mock upload endpoint
+    // In production, this would generate a pre-signed URL to object storage
+    const storageKey = `consent-videos/${randomUUID()}-${filename}`;
+    const uploadUrl = `/api/upload/${encodeURIComponent(storageKey)}`;
+    
+    return { uploadUrl, storageKey };
+  }
+}
+
+export const storage = new PostgresStorage();
