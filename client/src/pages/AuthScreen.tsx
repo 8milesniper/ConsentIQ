@@ -32,17 +32,7 @@ export const AuthScreen = (): JSX.Element => {
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isSignIn, setIsSignIn] = useState(false);
 
-  // Redirect immediately if already authenticated (with protection against loops)
-  useEffect(() => {
-    if (isAuthenticated) {
-      console.log("User already authenticated, redirecting to dashboard");
-      // Add small delay to prevent redirect loops
-      const timer = setTimeout(() => {
-        setLocation("/dashboard");
-      }, 200);
-      return () => clearTimeout(timer);
-    }
-  }, [isAuthenticated, setLocation]);
+  // The App.tsx routing will handle redirects automatically
 
   const form = useForm<CreateAccountData | SignInData>({
     resolver: zodResolver(isSignIn ? signInSchema : createAccountSchema),
