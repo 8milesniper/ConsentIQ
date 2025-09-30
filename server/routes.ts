@@ -273,6 +273,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Account Cleanup Routes
+  
+  // Cleanup expired accounts (requires admin authentication)
+  app.post("/api/admin/cleanup-expired-accounts", async (req, res) => {
+    // Verify admin token exists and matches
+    const adminToken = req.headers['x-admin-token'];
+    const requiredToken = process.env.ADMIN_CLEANUP_TOKEN;
+    
+    if (!requiredToken) {
+      res.status(500).json({ error: "Server misconfiguration - admin token not set" });
+      return;
+    }
+    
+    if (!adminToken || adminToken !== requiredToken) {
+      res.status(401).json({ error: "Unauthorized - Invalid admin token" });
+      return;
+    }
+
+    try {
+      const usersToDelete = await storage.getUsersScheduledForDeletion();
+      
+      if (usersToDelete.length === 0) {
+        res.json({ message: "No accounts to delete", count: 0 });
+        return;
+      }
+
+      // Delete each expired account
+      for (const user of usersToDelete) {
+        await storage.deleteUserAccount(user.id);
+        console.log(`Deleted expired account: ${user.username} (${user.id})`);
+      }
+
+      res.json({ 
+        message: `Successfully deleted ${usersToDelete.length} expired account(s)`,
+        count: usersToDelete.length
+      });
+    } catch (error: any) {
+      console.error('Cleanup error:', error);
+      res.status(500).json({ error: error.message || "Failed to cleanup accounts" });
+    }
+  });
+
   // Stripe Subscription Routes
   
   // Create or get subscription for authenticated user
@@ -402,7 +444,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Handle subscription events
       switch (event.type) {
         case 'invoice.payment_succeeded':
-          // When payment succeeds, update subscription status to active
+          // When payment succeeds, update subscription status to active and clear deletion schedule
           const invoice = event.data.object;
           if (invoice.subscription) {
             const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
@@ -410,6 +452,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Update status to active when payment succeeds
             if (subscription.metadata?.userId) {
               await storage.updateUserSubscriptionStatus(subscription.metadata.userId, subscription.status);
+              
+              // If subscription is active, clear any scheduled deletion
+              if (subscription.status === 'active') {
+                await storage.scheduleAccountDeletion(
+                  subscription.metadata.userId,
+                  null as any, // Clear deletion date
+                  null as any  // Clear subscription end date
+                );
+              }
             }
           }
           break;
@@ -421,13 +472,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (updatedSubscription.metadata?.userId) {
             await storage.updateUserSubscriptionStatus(updatedSubscription.metadata.userId, updatedSubscription.status);
             
-            // If subscription is canceled, schedule account deletion 7 days from cancellation
-            if (updatedSubscription.status === 'canceled' && updatedSubscription.canceled_at) {
+            // Handle different subscription states
+            if (updatedSubscription.status === 'past_due') {
+              // Payment failed - give 7 days to fix
+              const now = new Date();
+              const deletionDate = new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000)); // 7 days from now
+              
+              await storage.scheduleAccountDeletion(
+                updatedSubscription.metadata.userId,
+                deletionDate,
+                now
+              );
+            } else if (updatedSubscription.status === 'active') {
+              // Payment succeeded or resubscribed - clear any deletion schedule
+              await storage.scheduleAccountDeletion(
+                updatedSubscription.metadata.userId,
+                null as any,
+                null as any
+              );
+            } else if (updatedSubscription.status === 'canceled' && updatedSubscription.canceled_at) {
+              // User canceled - schedule deletion 7 days after subscription ends
               const cancelDate = new Date(updatedSubscription.canceled_at * 1000);
               const subscriptionEndDate = updatedSubscription.current_period_end 
                 ? new Date(updatedSubscription.current_period_end * 1000)
                 : cancelDate;
-              const deletionDate = new Date(subscriptionEndDate.getTime() + (7 * 24 * 60 * 60 * 1000)); // 7 days after subscription ends
+              const deletionDate = new Date(subscriptionEndDate.getTime() + (7 * 24 * 60 * 60 * 1000));
               
               await storage.scheduleAccountDeletion(
                 updatedSubscription.metadata.userId,

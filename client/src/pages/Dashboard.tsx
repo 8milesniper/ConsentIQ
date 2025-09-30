@@ -39,7 +39,11 @@ export const Dashboard = (): JSX.Element => {
             <AlertCircle className="h-4 w-4" />
             <AlertDescription className="flex items-center justify-between">
               <span>
-                ⚠️ Your subscription has been cancelled. Your account and all data will be deleted in <strong>{daysUntilDeletion} day{daysUntilDeletion !== 1 ? 's' : ''}</strong>.
+                {user?.subscriptionStatus === 'past_due' ? (
+                  <>⚠️ Payment failed. Fix your payment within <strong>{daysUntilDeletion} day{daysUntilDeletion !== 1 ? 's' : ''}</strong> or your account will be deleted.</>
+                ) : (
+                  <>⚠️ Your subscription has been cancelled. Your account and all data will be deleted in <strong>{daysUntilDeletion} day{daysUntilDeletion !== 1 ? 's' : ''}</strong>.</>
+                )}
               </span>
               <Button 
                 onClick={() => setLocation("/subscribe")}
@@ -47,7 +51,7 @@ export const Dashboard = (): JSX.Element => {
                 size="sm"
                 data-testid="button-resubscribe"
               >
-                Resubscribe Now
+                {user?.subscriptionStatus === 'past_due' ? 'Fix Payment' : 'Resubscribe Now'}
               </Button>
             </AlertDescription>
           </Alert>

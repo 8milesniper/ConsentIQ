@@ -16,6 +16,7 @@ export interface IStorage {
   updateUserSubscriptionStatus(userId: string, status: string): Promise<User | undefined>;
   scheduleAccountDeletion(userId: string, deletionDate: Date, subscriptionEndDate: Date): Promise<User | undefined>;
   deleteUserAccount(userId: string): Promise<void>;
+  getUsersScheduledForDeletion(): Promise<User[]>;
   
   // Consent session management
   createConsentSession(session: InsertConsentSession): Promise<ConsentSession>;
@@ -123,6 +124,15 @@ export class MemStorage implements IStorage {
         this.consentSessions.delete(sessionId);
       }
     }
+  }
+
+  async getUsersScheduledForDeletion(): Promise<User[]> {
+    const now = new Date();
+    return Array.from(this.users.values()).filter(user => {
+      if (!user.accountDeletionDate) return false;
+      const deletionDate = new Date(user.accountDeletionDate);
+      return deletionDate <= now;
+    });
   }
 
   // Consent session methods
@@ -382,6 +392,16 @@ export class PostgresStorage implements IStorage {
     
     // Delete the user
     await this.db.delete(users).where(eq(users.id, userId));
+  }
+
+  async getUsersScheduledForDeletion(): Promise<User[]> {
+    const now = new Date();
+    const result = await this.db.select().from(users);
+    return result.filter(user => {
+      if (!user.accountDeletionDate) return false;
+      const deletionDate = new Date(user.accountDeletionDate);
+      return deletionDate <= now;
+    });
   }
 
   async createConsentSession(session: InsertConsentSession): Promise<ConsentSession> {
