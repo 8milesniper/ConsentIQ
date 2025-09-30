@@ -675,7 +675,7 @@ export const ConsentForm = (): JSX.Element => {
               className="w-full bg-[#4ade80] hover:bg-[#22c55e] text-white font-semibold py-3 rounded-xl mb-4 disabled:opacity-50"
               data-testid="button-grant-consent"
             >
-              {isSubmitting || updateStatusMutation.isPending ? "⏳ Recording consent..." : "✓ Yes, I consent"}
+              {isSubmitting || updateStatusMutation.isPending ? "🤖 AI is analyzing your response..." : "✓ Yes, I consent"}
             </Button>
 
             <Button
@@ -685,7 +685,7 @@ export const ConsentForm = (): JSX.Element => {
               className="w-full border-2 border-gray-300 text-gray-700 font-semibold py-3 rounded-xl disabled:opacity-50"
               data-testid="button-deny-consent"
             >
-              {isSubmitting || updateStatusMutation.isPending ? "⏳ Recording response..." : "✗ No, I don't consent"}
+              {isSubmitting || updateStatusMutation.isPending ? "🤖 AI is analyzing your response..." : "✗ No, I don't consent"}
             </Button>
           </div>
         </div>
@@ -693,42 +693,57 @@ export const ConsentForm = (): JSX.Element => {
     );
   }
 
-  // Step 3: Completion
+  // Step 3: Completion - Show loading until verification is done
+  const isVerificationPending = session?.verificationStatus === "pending";
+  
   return (
     <div className="min-h-screen bg-slate-800 flex flex-col items-center justify-center px-6">
       <div className="max-w-sm w-full">
         {/* Card Container */}
         <div className="bg-slate-700 rounded-3xl p-8 text-center border border-slate-600">
-          {/* Icon - Green Checkmark for Granted, Red X for Denied */}
-          {session?.consentStatus === "granted" ? (
-            <div className="w-16 h-16 bg-[#22c55e] rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg viewBox="0 0 24 24" className="w-8 h-8 text-white">
-                <path
-                  fill="currentColor"
-                  d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"
-                />
-              </svg>
-            </div>
+          {isVerificationPending ? (
+            <>
+              {/* Loading State */}
+              <div className="w-16 h-16 border-4 border-[#4ade80] border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+              <h2 className="text-2xl font-bold text-white mb-4">🤖 AI is analyzing...</h2>
+              <p className="text-gray-300 leading-relaxed">
+                Please wait while we verify your response
+              </p>
+            </>
           ) : (
-            <div className="w-16 h-16 bg-[#ef4444] rounded-lg flex items-center justify-center mx-auto mb-6">
-              <svg viewBox="0 0 24 24" className="w-8 h-8 text-white">
-                <path
-                  fill="currentColor"
-                  d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"
-                />
-              </svg>
-            </div>
+            <>
+              {/* Icon - Green Checkmark for Granted, Red X for Denied */}
+              {session?.consentStatus === "granted" ? (
+                <div className="w-16 h-16 bg-[#22c55e] rounded-full flex items-center justify-center mx-auto mb-6">
+                  <svg viewBox="0 0 24 24" className="w-8 h-8 text-white">
+                    <path
+                      fill="currentColor"
+                      d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"
+                    />
+                  </svg>
+                </div>
+              ) : (
+                <div className="w-16 h-16 bg-[#ef4444] rounded-lg flex items-center justify-center mx-auto mb-6">
+                  <svg viewBox="0 0 24 24" className="w-8 h-8 text-white">
+                    <path
+                      fill="currentColor"
+                      d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"
+                    />
+                  </svg>
+                </div>
+              )}
+              
+              {/* Title */}
+              <h2 className="text-2xl font-bold text-white mb-4">
+                {session?.consentStatus === "granted" ? "Consent Granted" : "Consent Declined"}
+              </h2>
+              
+              {/* Subtitle */}
+              <p className="text-gray-300 leading-relaxed">
+                Your recording is securely stored at ConsentHQ. A verification text has been sent.
+              </p>
+            </>
           )}
-          
-          {/* Title */}
-          <h2 className="text-2xl font-bold text-white mb-4">
-            {session?.consentStatus === "granted" ? "Consent Granted" : "Consent Declined"}
-          </h2>
-          
-          {/* Subtitle */}
-          <p className="text-gray-300 leading-relaxed">
-            Your recording is securely stored at ConsentHQ. A verification text has been sent.
-          </p>
         </div>
       </div>
     </div>
