@@ -14,6 +14,8 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUserStripeInfo(userId: string, stripeCustomerId: string, stripeSubscriptionId: string, subscriptionPlan: string, subscriptionStatus: string): Promise<User | undefined>;
   updateUserSubscriptionStatus(userId: string, status: string): Promise<User | undefined>;
+  scheduleAccountDeletion(userId: string, deletionDate: Date, subscriptionEndDate: Date): Promise<User | undefined>;
+  deleteUserAccount(userId: string): Promise<void>;
   
   // Consent session management
   createConsentSession(session: InsertConsentSession): Promise<ConsentSession>;
@@ -65,6 +67,8 @@ export class MemStorage implements IStorage {
       stripeSubscriptionId: null,
       subscriptionStatus: null,
       subscriptionPlan: null,
+      subscriptionEndDate: null,
+      accountDeletionDate: null,
     };
     this.users.set(id, user);
     return user;
@@ -95,6 +99,30 @@ export class MemStorage implements IStorage {
     };
     this.users.set(userId, updatedUser);
     return updatedUser;
+  }
+
+  async scheduleAccountDeletion(userId: string, deletionDate: Date, subscriptionEndDate: Date): Promise<User | undefined> {
+    const user = this.users.get(userId);
+    if (!user) return undefined;
+    
+    const updatedUser = {
+      ...user,
+      accountDeletionDate: deletionDate,
+      subscriptionEndDate: subscriptionEndDate,
+    };
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+
+  async deleteUserAccount(userId: string): Promise<void> {
+    this.users.delete(userId);
+    
+    // Delete all consent sessions for this user
+    for (const [sessionId, session] of this.consentSessions.entries()) {
+      if (session.initiatorUserId === userId) {
+        this.consentSessions.delete(sessionId);
+      }
+    }
   }
 
   // Consent session methods
@@ -334,6 +362,26 @@ export class PostgresStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return result[0];
+  }
+
+  async scheduleAccountDeletion(userId: string, deletionDate: Date, subscriptionEndDate: Date): Promise<User | undefined> {
+    const result = await this.db
+      .update(users)
+      .set({ 
+        accountDeletionDate: deletionDate,
+        subscriptionEndDate: subscriptionEndDate
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return result[0];
+  }
+
+  async deleteUserAccount(userId: string): Promise<void> {
+    // Delete all consent sessions for this user
+    await this.db.delete(consentSessions).where(eq(consentSessions.initiatorUserId, userId));
+    
+    // Delete the user
+    await this.db.delete(users).where(eq(users.id, userId));
   }
 
   async createConsentSession(session: InsertConsentSession): Promise<ConsentSession> {

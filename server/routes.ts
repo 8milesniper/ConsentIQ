@@ -88,7 +88,7 @@ const requireAuth = (req: Request, res: any, next: any) => {
   }
 };
 
-// Subscription middleware - requires active or trialing subscription
+// Subscription middleware - requires active subscription (no trials)
 const requireSubscription = async (req: Request, res: any, next: any) => {
   try {
     const authReq = req as AuthenticatedRequest;
@@ -99,8 +99,8 @@ const requireSubscription = async (req: Request, res: any, next: any) => {
       return;
     }
     
-    // Check if user has an active or trialing subscription
-    if (user.subscriptionStatus === 'active' || user.subscriptionStatus === 'trialing') {
+    // Check if user has an active subscription
+    if (user.subscriptionStatus === 'active') {
       next();
     } else {
       res.status(403).json({ 
@@ -290,8 +290,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           expand: ['latest_invoice.payment_intent']
         });
         
-        // If active or trialing, user already has access
-        if (subscription.status === 'active' || subscription.status === 'trialing') {
+        // If active, user already has access
+        if (subscription.status === 'active') {
           const invoice = subscription.latest_invoice as any;
           const paymentIntent = invoice?.payment_intent;
           
@@ -413,12 +413,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
           break;
           
         case 'customer.subscription.updated':
-        case 'customer.subscription.deleted':
-          const subscription = event.data.object;
+          const updatedSubscription = event.data.object;
           
           // Update user's subscription status
-          if (subscription.metadata?.userId) {
-            await storage.updateUserSubscriptionStatus(subscription.metadata.userId, subscription.status);
+          if (updatedSubscription.metadata?.userId) {
+            await storage.updateUserSubscriptionStatus(updatedSubscription.metadata.userId, updatedSubscription.status);
+            
+            // If subscription is canceled, schedule account deletion 7 days from cancellation
+            if (updatedSubscription.status === 'canceled' && updatedSubscription.canceled_at) {
+              const cancelDate = new Date(updatedSubscription.canceled_at * 1000);
+              const subscriptionEndDate = updatedSubscription.current_period_end 
+                ? new Date(updatedSubscription.current_period_end * 1000)
+                : cancelDate;
+              const deletionDate = new Date(subscriptionEndDate.getTime() + (7 * 24 * 60 * 60 * 1000)); // 7 days after subscription ends
+              
+              await storage.scheduleAccountDeletion(
+                updatedSubscription.metadata.userId,
+                deletionDate,
+                subscriptionEndDate
+              );
+            }
+          }
+          break;
+          
+        case 'customer.subscription.deleted':
+          const deletedSubscription = event.data.object;
+          
+          // When subscription is deleted, schedule account deletion if not already scheduled
+          if (deletedSubscription.metadata?.userId) {
+            const now = new Date();
+            const deletionDate = new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000)); // 7 days from deletion
+            
+            await storage.updateUserSubscriptionStatus(deletedSubscription.metadata.userId, 'canceled');
+            await storage.scheduleAccountDeletion(
+              deletedSubscription.metadata.userId,
+              deletionDate,
+              now
+            );
           }
           break;
       }
