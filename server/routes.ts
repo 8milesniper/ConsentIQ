@@ -264,7 +264,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         stripeCustomerId: user.stripeCustomerId,
         stripeSubscriptionId: user.stripeSubscriptionId,
         subscriptionStatus: user.subscriptionStatus,
-        subscriptionPlan: user.subscriptionPlan
+        subscriptionPlan: user.subscriptionPlan,
+        subscriptionEndDate: user.subscriptionEndDate,
+        accountDeletionDate: user.accountDeletionDate
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to get user info" });
