@@ -269,6 +269,8 @@ export const ConsentForm = (): JSX.Element => {
     }
 
     setIsSubmitting(true);
+    setCurrentStep(3); // Move to completion step IMMEDIATELY to show loading spinner
+    
     try {
       // Step 1: Upload and create video asset
       const baseMimeType = videoBlob.type.split(';')[0]; // Remove ;codecs=... part
@@ -352,11 +354,8 @@ export const ConsentForm = (): JSX.Element => {
           duration: 8000,
         });
       }
-
-      // Update session status (the verification already handled this)
-      setCurrentStep(3); // Move to completion step
       
-      // Refetch session to get updated data
+      // Refetch session to get updated data (completion screen already showing)
       refetch();
 
     } catch (error) {
