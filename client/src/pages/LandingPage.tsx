@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { Shield, Smartphone, Lock, Video, Zap, Heart, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logoPath from "@assets/ConsentIQ (2 x 4 in) (2 x 4 in) (Graph) (4)_1759218026571.png";
-import { useEffect } from "react";
+import { useEffect, type MouseEvent } from "react";
 
 export default function LandingPage() {
   // Handle hash navigation on page load
@@ -18,7 +18,7 @@ export default function LandingPage() {
     }
   }, []);
 
-  const scrollToPricing = (e: React.MouseEvent) => {
+  const scrollToPricing = (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     const pricingSection = document.querySelector('#pricing');
     if (pricingSection) {
