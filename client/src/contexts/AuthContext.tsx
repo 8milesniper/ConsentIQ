@@ -6,6 +6,12 @@ interface User {
   fullName?: string | null;
   phoneNumber?: string | null;
   profilePicture?: string | null;
+  stripeCustomerId?: string | null;
+  stripeSubscriptionId?: string | null;
+  subscriptionStatus?: string | null;
+  subscriptionPlan?: string | null;
+  subscriptionEndDate?: string | null;
+  accountDeletionDate?: string | null;
 }
 
 interface AuthContextType {

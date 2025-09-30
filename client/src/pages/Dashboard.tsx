@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export const Dashboard = (): JSX.Element => {
   const [, setLocation] = useLocation();
@@ -11,6 +13,18 @@ export const Dashboard = (): JSX.Element => {
     setLocation("/");
   };
 
+  // Calculate days until account deletion
+  const getDaysUntilDeletion = () => {
+    if (!user?.accountDeletionDate) return null;
+    const deletionDate = new Date(user.accountDeletionDate);
+    const now = new Date();
+    const diffTime = deletionDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const daysUntilDeletion = getDaysUntilDeletion();
+
   return (
     <div 
       className="min-h-screen bg-cover bg-center bg-no-repeat relative"
@@ -18,8 +32,30 @@ export const Dashboard = (): JSX.Element => {
         backgroundImage: "linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><rect width=\"100\" height=\"100\" fill=\"%23000\"/><circle cx=\"20\" cy=\"20\" r=\"2\" fill=\"%23333\"/><circle cx=\"80\" cy=\"30\" r=\"1.5\" fill=\"%23333\"/><circle cx=\"60\" cy=\"70\" r=\"1\" fill=\"%23333\"/></svg>')"
       }}
     >
+      {/* Account Deletion Warning Banner */}
+      {daysUntilDeletion !== null && daysUntilDeletion > 0 && (
+        <div className="absolute top-0 left-0 right-0 z-50">
+          <Alert className="bg-red-900/90 border-red-800 text-white rounded-none" data-testid="alert-deletion-warning">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="flex items-center justify-between">
+              <span>
+                ⚠️ Your subscription has been cancelled. Your account and all data will be deleted in <strong>{daysUntilDeletion} day{daysUntilDeletion !== 1 ? 's' : ''}</strong>.
+              </span>
+              <Button 
+                onClick={() => setLocation("/subscribe")}
+                className="bg-white text-red-900 hover:bg-gray-100 ml-4"
+                size="sm"
+                data-testid="button-resubscribe"
+              >
+                Resubscribe Now
+              </Button>
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+      
       {/* Header */}
-      <div className="absolute top-12 right-6 text-white">
+      <div className={`absolute ${daysUntilDeletion !== null && daysUntilDeletion > 0 ? 'top-24' : 'top-12'} right-6 text-white`}>
         <div className="flex items-center gap-4">
           <button
             onClick={handleLogout}
