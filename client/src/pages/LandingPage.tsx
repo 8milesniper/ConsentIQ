@@ -46,17 +46,12 @@ export default function LandingPage() {
             Protect yourself, respect your partner, and build trust.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
+          <div className="flex justify-center items-center mb-12">
             <Link href="/register">
               <Button size="lg" className="bg-[#4ade80] hover:bg-[#22c55e] text-white text-lg px-8 py-6" data-testid="button-get-started-hero">
                 📱 Get Started Now
               </Button>
             </Link>
-            <a href="#how-it-works">
-              <Button size="lg" variant="outline" className="border-gray-600 text-white hover:bg-slate-800 text-lg px-8 py-6" data-testid="button-watch-video">
-                Watch How It Works
-              </Button>
-            </a>
           </div>
 
           <div className="flex flex-wrap justify-center gap-8 text-sm">
