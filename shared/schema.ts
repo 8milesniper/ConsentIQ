@@ -17,6 +17,8 @@ export const users = pgTable("users", {
   stripeSubscriptionId: text("stripe_subscription_id"),
   subscriptionStatus: text("subscription_status"), // active, canceled, past_due, etc.
   subscriptionPlan: text("subscription_plan"), // monthly, annual
+  subscriptionEndDate: timestamp("subscription_end_date"), // when subscription ends/ended
+  accountDeletionDate: timestamp("account_deletion_date"), // scheduled deletion date (7 days after cancellation)
 });
 
 export const videoAssets = pgTable("video_assets", {
