@@ -550,7 +550,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get consent session by ID
-  app.get("/api/consent/sessions/:id", async (req, res) => {
+  app.get("/api/consent/sessions/:id", requireAuth, requireSubscription, async (req, res) => {
     try {
       const session = await storage.getConsentSession(req.params.id);
       if (!session) {
@@ -640,7 +640,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get video asset by ID (secured)
-  app.get("/api/video/assets/:id", requireAuth, async (req, res) => {
+  app.get("/api/video/assets/:id", requireAuth, requireSubscription, async (req, res) => {
     try {
       const asset = await storage.getVideoAsset(req.params.id);
       if (!asset) {

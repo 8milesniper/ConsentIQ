@@ -3,10 +3,20 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useEffect } from "react";
 
 export const Dashboard = (): JSX.Element => {
   const [, setLocation] = useLocation();
   const { user, logout } = useAuth();
+
+  // Redirect to payment if no active subscription
+  useEffect(() => {
+    if (user && user.subscriptionStatus !== 'active') {
+      // Preserve the plan from registration or default to monthly
+      const plan = user.subscriptionPlan || 'monthly';
+      setLocation(`/subscribe?plan=${plan}`);
+    }
+  }, [user, setLocation]);
 
   const handleLogout = async () => {
     await logout();
