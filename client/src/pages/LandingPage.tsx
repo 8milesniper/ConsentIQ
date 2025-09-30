@@ -20,7 +20,7 @@ export default function LandingPage() {
             <Link href="/login">
               <Button variant="ghost" className="text-white hover:bg-slate-800" data-testid="button-login">Login</Button>
             </Link>
-            <Link href="/register">
+            <Link href="/register?plan=monthly">
               <Button className="bg-[#4ade80] hover:bg-[#22c55e] text-white" data-testid="button-get-started-nav">Get Started</Button>
             </Link>
           </div>
@@ -47,7 +47,7 @@ export default function LandingPage() {
           </p>
 
           <div className="flex justify-center items-center mb-12">
-            <Link href="/register">
+            <Link href="/register?plan=monthly">
               <Button size="lg" className="bg-[#4ade80] hover:bg-[#22c55e] text-white text-lg px-8 py-6" data-testid="button-get-started-hero">
                 📱 Get Started Now
               </Button>
