@@ -2,8 +2,30 @@ import { Link } from "wouter";
 import { Shield, Smartphone, Lock, Video, Zap, Heart, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logoPath from "@assets/ConsentIQ (2 x 4 in) (2 x 4 in) (Graph) (4)_1759218026571.png";
+import { useEffect } from "react";
 
 export default function LandingPage() {
+  // Handle hash navigation on page load
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash) {
+      const element = document.querySelector(hash);
+      if (element) {
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
+    }
+  }, []);
+
+  const scrollToPricing = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const pricingSection = document.querySelector('#pricing');
+    if (pricingSection) {
+      pricingSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-900 text-white">
       {/* Navigation */}
@@ -20,9 +42,7 @@ export default function LandingPage() {
             <Link href="/login">
               <Button variant="ghost" className="text-white hover:bg-slate-800" data-testid="button-login">Login</Button>
             </Link>
-            <a href="#pricing">
-              <Button className="bg-[#4ade80] hover:bg-[#22c55e] text-white" data-testid="button-get-started-nav">Get Started</Button>
-            </a>
+            <Button onClick={scrollToPricing} className="bg-[#4ade80] hover:bg-[#22c55e] text-white" data-testid="button-get-started-nav">Get Started</Button>
           </div>
         </div>
       </nav>
@@ -47,11 +67,9 @@ export default function LandingPage() {
           </p>
 
           <div className="flex justify-center items-center mb-12">
-            <a href="#pricing">
-              <Button size="lg" className="bg-[#4ade80] hover:bg-[#22c55e] text-white text-lg px-8 py-6" data-testid="button-get-started-hero">
-                📱 Get Started Now
-              </Button>
-            </a>
+            <Button onClick={scrollToPricing} size="lg" className="bg-[#4ade80] hover:bg-[#22c55e] text-white text-lg px-8 py-6" data-testid="button-get-started-hero">
+              📱 Get Started Now
+            </Button>
           </div>
 
           <div className="flex flex-wrap justify-center gap-8 text-sm">
@@ -365,11 +383,9 @@ export default function LandingPage() {
           <p className="text-xl mb-8 text-white/90">
             Join thousands of smart guys who are taking control of their safety and building better relationships.
           </p>
-          <a href="#pricing">
-            <Button size="lg" className="bg-white text-slate-900 hover:bg-slate-100 text-lg px-12 py-6 font-bold" data-testid="button-get-started-cta">
-              🔒 Get Started Now
-            </Button>
-          </a>
+          <Button onClick={scrollToPricing} size="lg" className="bg-white text-slate-900 hover:bg-slate-100 text-lg px-12 py-6 font-bold" data-testid="button-get-started-cta">
+            🔒 Get Started Now
+          </Button>
           <p className="text-sm mt-4 text-white/80">No credit card required • 100% private and secure</p>
         </div>
       </section>
