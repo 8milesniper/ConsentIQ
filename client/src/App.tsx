@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 
+import LandingPage from "@/pages/LandingPage";
 import { WelcomeScreen } from "@/pages/WelcomeScreen";
 import { AuthScreen } from "@/pages/AuthScreen";
 import { Dashboard } from "@/pages/Dashboard";
@@ -28,26 +29,29 @@ function Router() {
   return (
     <Switch>
       {/* Public routes (no auth required) */}
+      <Route path="/" component={LandingPage} />
       <Route path="/consent/form/:qrCodeId?" component={ConsentForm} />
       
+      {/* Auth routes */}
+      <Route path="/register">
+        {isAuthenticated ? <Redirect to="/dashboard" /> : <AuthScreen />}
+      </Route>
+      <Route path="/login">
+        {isAuthenticated ? <Redirect to="/dashboard" /> : <AuthScreen />}
+      </Route>
+      
       {/* Protected routes (auth required) */}
-      <Route path="/">
-        {isAuthenticated ? <Redirect to="/dashboard" /> : <AuthScreen />}
-      </Route>
-      <Route path="/auth">
-        {isAuthenticated ? <Redirect to="/dashboard" /> : <AuthScreen />}
-      </Route>
       <Route path="/welcome">
-        {isAuthenticated ? <WelcomeScreen /> : <Redirect to="/auth" />}
+        {isAuthenticated ? <WelcomeScreen /> : <Redirect to="/register" />}
       </Route>
       <Route path="/dashboard">
-        {isAuthenticated ? <Dashboard /> : <Redirect to="/auth" />}
+        {isAuthenticated ? <Dashboard /> : <Redirect to="/register" />}
       </Route>
       <Route path="/consent/new">
-        {isAuthenticated ? <ConsentSession /> : <Redirect to="/auth" />}
+        {isAuthenticated ? <ConsentSession /> : <Redirect to="/register" />}
       </Route>
       <Route path="/learn">
-        {isAuthenticated ? <ElementLearnAndEngage /> : <Redirect to="/auth" />}
+        {isAuthenticated ? <ElementLearnAndEngage /> : <Redirect to="/register" />}
       </Route>
       {/* Fallback to 404 */}
       <Route component={NotFound} />
