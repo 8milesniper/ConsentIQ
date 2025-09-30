@@ -145,7 +145,7 @@ export default function LandingPage() {
               </div>
               <h3 className="text-2xl font-bold mb-3">100% Private</h3>
               <p className="text-gray-300">
-                Videos are encrypted and stored securely for your legal protection. Only you can access them - your partner never sees the recording.
+                Videos are encrypted and stored securely. You get instant text confirmation - nobody watches the video, complete privacy.
               </p>
             </div>
 
