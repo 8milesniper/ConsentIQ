@@ -92,16 +92,17 @@ export const AuthScreen = (): JSX.Element => {
       // Show success message
       toast({ 
         title: `${isSignIn ? 'Welcome back!' : 'Account created successfully!'}`, 
-        description: `${isSignIn ? 'You have been signed in.' : plan ? 'Redirecting to checkout...' : 'Redirecting to your dashboard...'}`,
+        description: `${isSignIn ? 'You have been signed in.' : plan ? 'Redirecting to checkout...' : 'Redirecting to choose your plan...'}`,
       });
       
       // Ensure auth state is set before redirect
-      console.log(plan ? "Redirecting to subscribe" : "Redirecting to dashboard");
+      console.log(plan ? `Redirecting to subscribe with plan: ${plan}` : "No plan - redirecting to subscribe to choose");
       setTimeout(() => {
         if (plan && (plan === 'monthly' || plan === 'annual')) {
           setLocation(`/subscribe?plan=${plan}`);
         } else {
-          setLocation("/dashboard");
+          // No plan selected - redirect to subscribe page to choose plan
+          setLocation("/subscribe");
         }
       }, 100);
     },
