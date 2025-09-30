@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { Shield, Smartphone, Lock, Video, Zap, Heart, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import logoPath from "@assets/ConsentIQ (2 x 4 in) (2 x 4 in) (Graph) (4)_1759218026571.png";
 
 export default function LandingPage() {
   return (
@@ -9,9 +10,7 @@ export default function LandingPage() {
       <nav className="fixed top-0 w-full bg-slate-900/95 backdrop-blur-sm z-50 border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-[#4ade80] rounded-lg flex items-center justify-center">
-              <Heart className="w-5 h-5 text-white" fill="white" />
-            </div>
+            <img src={logoPath} alt="ConsentIQ" className="w-10 h-10" />
             <span className="text-xl font-bold">ConsentIQ</span>
           </div>
           <div className="hidden md:flex items-center gap-8">
@@ -22,7 +21,7 @@ export default function LandingPage() {
               <Button variant="ghost" className="text-white hover:bg-slate-800" data-testid="button-login">Login</Button>
             </Link>
             <Link href="/register">
-              <Button className="bg-[#FF8C00] hover:bg-[#FF7700] text-white" data-testid="button-get-started-nav">Get Started</Button>
+              <Button className="bg-[#4ade80] hover:bg-[#22c55e] text-white" data-testid="button-get-started-nav">Get Started</Button>
             </Link>
           </div>
         </div>
@@ -31,25 +30,25 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-6">
         <div className="max-w-7xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-[#FF8C00]/20 text-[#FF8C00] px-4 py-2 rounded-full mb-6">
+          <div className="inline-flex items-center gap-2 bg-[#4ade80]/20 text-[#4ade80] px-4 py-2 rounded-full mb-6">
             <Shield className="w-4 h-4" />
             <span className="text-sm font-medium">The Future of Consent is Here</span>
           </div>
           
           <h1 className="text-5xl md:text-7xl font-bold mb-6">
-            Never Wonder <span className="text-[#FF8C00]">Again</span>
+            Never Wonder <span className="text-[#4ade80]">Again</span>
           </h1>
           
           <p className="text-xl md:text-2xl text-gray-300 mb-4 max-w-3xl mx-auto">
             The smart way to secure clear consent before intimate moments.
           </p>
-          <p className="text-lg md:text-xl text-[#FF8C00] font-semibold mb-8">
+          <p className="text-lg md:text-xl text-[#4ade80] font-semibold mb-8">
             Protect yourself, respect your partner, and build trust.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
             <Link href="/register">
-              <Button size="lg" className="bg-[#FF8C00] hover:bg-[#FF7700] text-white text-lg px-8 py-6" data-testid="button-get-started-hero">
+              <Button size="lg" className="bg-[#4ade80] hover:bg-[#22c55e] text-white text-lg px-8 py-6" data-testid="button-get-started-hero">
                 📱 Get Started Now
               </Button>
             </Link>
@@ -62,7 +61,7 @@ export default function LandingPage() {
 
           <div className="flex flex-wrap justify-center gap-8 text-sm">
             <div className="flex items-center gap-2">
-              <Star className="w-5 h-5 text-[#FF8C00]" fill="#FF8C00" />
+              <Star className="w-5 h-5 text-[#4ade80]" fill="#4ade80" />
               <span>4.9/5 Rating</span>
             </div>
             <div className="flex items-center gap-2">
@@ -126,8 +125,8 @@ export default function LandingPage() {
 
           <div className="grid md:grid-cols-3 gap-8">
             <div className="bg-slate-800/50 p-8 rounded-2xl border border-slate-700 hover:border-[#4ade80] transition">
-              <div className="w-14 h-14 bg-[#FF8C00]/20 rounded-xl flex items-center justify-center mb-4">
-                <Zap className="w-7 h-7 text-[#FF8C00]" />
+              <div className="w-14 h-14 bg-[#4ade80]/20 rounded-xl flex items-center justify-center mb-4">
+                <Zap className="w-7 h-7 text-[#4ade80]" />
               </div>
               <h3 className="text-2xl font-bold mb-3">Instant QR Code</h3>
               <p className="text-gray-300">
@@ -136,8 +135,8 @@ export default function LandingPage() {
             </div>
 
             <div className="bg-slate-800/50 p-8 rounded-2xl border border-slate-700 hover:border-[#4ade80] transition">
-              <div className="w-14 h-14 bg-[#FF8C00]/20 rounded-xl flex items-center justify-center mb-4">
-                <Video className="w-7 h-7 text-[#FF8C00]" />
+              <div className="w-14 h-14 bg-[#4ade80]/20 rounded-xl flex items-center justify-center mb-4">
+                <Video className="w-7 h-7 text-[#4ade80]" />
               </div>
               <h3 className="text-2xl font-bold mb-3">Video Consent</h3>
               <p className="text-gray-300">
@@ -146,8 +145,8 @@ export default function LandingPage() {
             </div>
 
             <div className="bg-slate-800/50 p-8 rounded-2xl border border-slate-700 hover:border-[#4ade80] transition">
-              <div className="w-14 h-14 bg-[#FF8C00]/20 rounded-xl flex items-center justify-center mb-4">
-                <Lock className="w-7 h-7 text-[#FF8C00]" />
+              <div className="w-14 h-14 bg-[#4ade80]/20 rounded-xl flex items-center justify-center mb-4">
+                <Lock className="w-7 h-7 text-[#4ade80]" />
               </div>
               <h3 className="text-2xl font-bold mb-3">100% Private</h3>
               <p className="text-gray-300">
@@ -196,7 +195,7 @@ export default function LandingPage() {
 
           <div className="grid md:grid-cols-3 gap-12">
             <div className="text-center">
-              <div className="w-20 h-20 bg-[#FF8C00] rounded-full flex items-center justify-center mx-auto mb-6">
+              <div className="w-20 h-20 bg-[#4ade80] rounded-full flex items-center justify-center mx-auto mb-6">
                 <span className="text-3xl font-bold">1</span>
               </div>
               <h3 className="text-2xl font-bold mb-4">Generate QR Code</h3>
@@ -206,7 +205,7 @@ export default function LandingPage() {
             </div>
 
             <div className="text-center">
-              <div className="w-20 h-20 bg-[#FF8C00] rounded-full flex items-center justify-center mx-auto mb-6">
+              <div className="w-20 h-20 bg-[#4ade80] rounded-full flex items-center justify-center mx-auto mb-6">
                 <span className="text-3xl font-bold">2</span>
               </div>
               <h3 className="text-2xl font-bold mb-4">Partner Scans</h3>
@@ -216,7 +215,7 @@ export default function LandingPage() {
             </div>
 
             <div className="text-center">
-              <div className="w-20 h-20 bg-[#FF8C00] rounded-full flex items-center justify-center mx-auto mb-6">
+              <div className="w-20 h-20 bg-[#4ade80] rounded-full flex items-center justify-center mx-auto mb-6">
                 <span className="text-3xl font-bold">3</span>
               </div>
               <h3 className="text-2xl font-bold mb-4">Record Consent</h3>
@@ -237,7 +236,7 @@ export default function LandingPage() {
             <div className="bg-slate-800/50 p-8 rounded-2xl border border-slate-700">
               <div className="flex gap-1 mb-4">
                 {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-5 h-5 text-[#FF8C00]" fill="#FF8C00" />
+                  <Star key={i} className="w-5 h-5 text-[#4ade80]" fill="#4ade80" />
                 ))}
               </div>
               <p className="text-gray-300 mb-4">
@@ -249,7 +248,7 @@ export default function LandingPage() {
             <div className="bg-slate-800/50 p-8 rounded-2xl border border-slate-700">
               <div className="flex gap-1 mb-4">
                 {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-5 h-5 text-[#FF8C00]" fill="#FF8C00" />
+                  <Star key={i} className="w-5 h-5 text-[#4ade80]" fill="#4ade80" />
                 ))}
               </div>
               <p className="text-gray-300 mb-4">
@@ -261,7 +260,7 @@ export default function LandingPage() {
             <div className="bg-slate-800/50 p-8 rounded-2xl border border-slate-700">
               <div className="flex gap-1 mb-4">
                 {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-5 h-5 text-[#FF8C00]" fill="#FF8C00" />
+                  <Star key={i} className="w-5 h-5 text-[#4ade80]" fill="#4ade80" />
                 ))}
               </div>
               <p className="text-gray-300 mb-4">
@@ -313,14 +312,14 @@ export default function LandingPage() {
                 </li>
               </ul>
               <Link href="/register">
-                <Button className="w-full bg-[#FF8C00] hover:bg-[#FF7700] text-white py-6 text-lg" data-testid="button-subscribe-monthly">
+                <Button className="w-full bg-[#4ade80] hover:bg-[#22c55e] text-white py-6 text-lg" data-testid="button-subscribe-monthly">
                   Get Started
                 </Button>
               </Link>
             </div>
 
-            <div className="bg-gradient-to-br from-[#FF8C00]/20 to-slate-800 p-8 rounded-2xl border-2 border-[#FF8C00] relative">
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#FF8C00] text-white px-4 py-1 rounded-full text-sm font-semibold">
+            <div className="bg-gradient-to-br from-[#4ade80]/20 to-slate-800 p-8 rounded-2xl border-2 border-[#4ade80] relative">
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#4ade80] text-white px-4 py-1 rounded-full text-sm font-semibold">
                 Save $80/year
               </div>
               <h3 className="text-2xl font-bold mb-2">Annual</h3>
@@ -355,7 +354,7 @@ export default function LandingPage() {
                 </li>
               </ul>
               <Link href="/register">
-                <Button className="w-full bg-[#FF8C00] hover:bg-[#FF7700] text-white py-6 text-lg" data-testid="button-subscribe-annual">
+                <Button className="w-full bg-[#4ade80] hover:bg-[#22c55e] text-white py-6 text-lg" data-testid="button-subscribe-annual">
                   Get Started
                 </Button>
               </Link>
@@ -365,14 +364,14 @@ export default function LandingPage() {
       </section>
 
       {/* Final CTA */}
-      <section className="py-20 px-6 bg-gradient-to-r from-[#FF8C00] to-[#FF7700]">
+      <section className="py-20 px-6 bg-gradient-to-r from-[#4ade80] to-[#22c55e]">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl md:text-5xl font-bold mb-6">Ready to Protect Yourself?</h2>
           <p className="text-xl mb-8 text-white/90">
             Join thousands of smart guys who are taking control of their safety and building better relationships.
           </p>
           <Link href="/register">
-            <Button size="lg" className="bg-white text-[#FF8C00] hover:bg-gray-100 text-lg px-12 py-6 font-bold" data-testid="button-get-started-cta">
+            <Button size="lg" className="bg-white text-slate-900 hover:bg-slate-100 text-lg px-12 py-6 font-bold" data-testid="button-get-started-cta">
               🔒 Get Started Now
             </Button>
           </Link>
@@ -385,9 +384,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-[#4ade80] rounded-lg flex items-center justify-center">
-                <Heart className="w-5 h-5 text-white" fill="white" />
-              </div>
+              <img src={logoPath} alt="ConsentIQ" className="w-10 h-10" />
               <span className="text-xl font-bold">ConsentIQ</span>
             </div>
             <div className="flex gap-8 text-sm text-gray-400">
