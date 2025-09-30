@@ -1,6 +1,6 @@
 # Overview
 
-ConsentIQ is a full-stack web application designed for managing video consent workflows. The platform enables authorized users to create consent sessions, generate QR codes for participant access, capture video consent recordings, and track consent status throughout the process. The application focuses on secure video handling, user authentication, and comprehensive consent management with configurable data retention policies.
+ConsentIQ is a full-stack web application designed for managing video consent workflows with a subscription-based business model. The platform enables authorized users to create consent sessions, generate QR codes for participant access, capture video consent recordings, and track consent status throughout the process. The application features Stripe-powered subscriptions at $40/month and $400/year, secure video handling, user authentication, and comprehensive consent management with configurable data retention policies.
 
 # User Preferences
 
@@ -23,10 +23,18 @@ Preferred communication style: Simple, everyday language.
 - **File Structure**: Monorepo structure with shared schema definitions between client and server
 
 ## Database Design
-- **Users Table**: Stores user credentials with bcrypt password hashing
+- **Users Table**: Stores user credentials with bcrypt password hashing, Stripe customer and subscription tracking fields
 - **Consent Sessions Table**: Tracks consent workflow state, participant information, QR codes, and retention policies
 - **Video Assets Table**: Manages video metadata, storage keys, encryption status, and file integrity checksums
 - **Enums**: PostgreSQL enums for consent status (pending, granted, denied, revoked)
+
+## Subscription System
+- **Payment Gateway**: Stripe integration for secure payment processing
+- **Subscription Tiers**: Monthly ($40/month) and Annual ($400/year) plans with $80 annual savings
+- **Checkout Flow**: Seamless registration-to-subscription flow with plan selection preserved through auth
+- **Stripe Elements**: Embedded payment form with customized theming for consistent brand experience
+- **Webhook Integration**: Real-time subscription status updates via Stripe webhooks
+- **Customer Management**: Automatic Stripe customer creation and subscription tracking in user records
 
 ## Authentication & Security
 - **Password Security**: bcrypt hashing with salt rounds for password storage
@@ -53,6 +61,7 @@ Preferred communication style: Simple, everyday language.
 - **ORM**: Drizzle Kit for migrations and schema management
 - **Authentication**: JSON Web Tokens (jsonwebtoken library)
 - **Password Hashing**: bcryptjs for secure password storage
+- **Payment Processing**: Stripe for subscription management and recurring billing
 
 ## UI & Frontend Libraries
 - **Component Library**: Radix UI primitives for accessible components

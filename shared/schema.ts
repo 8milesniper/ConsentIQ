@@ -13,6 +13,10 @@ export const users = pgTable("users", {
   fullName: text("full_name"),
   phoneNumber: text("phone_number"), 
   profilePicture: text("profile_picture"), // Base64 encoded image data
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  subscriptionStatus: text("subscription_status"), // active, canceled, past_due, etc.
+  subscriptionPlan: text("subscription_plan"), // monthly, annual
 });
 
 export const videoAssets = pgTable("video_assets", {

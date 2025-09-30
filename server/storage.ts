@@ -12,6 +12,8 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUserStripeInfo(userId: string, stripeCustomerId: string, stripeSubscriptionId: string, subscriptionPlan: string, subscriptionStatus: string): Promise<User | undefined>;
+  updateUserSubscriptionStatus(userId: string, status: string): Promise<User | undefined>;
   
   // Consent session management
   createConsentSession(session: InsertConsentSession): Promise<ConsentSession>;
@@ -59,9 +61,40 @@ export class MemStorage implements IStorage {
       fullName: insertUser.fullName || null,
       phoneNumber: insertUser.phoneNumber || null,
       profilePicture: insertUser.profilePicture || null,
+      stripeCustomerId: null,
+      stripeSubscriptionId: null,
+      subscriptionStatus: null,
+      subscriptionPlan: null,
     };
     this.users.set(id, user);
     return user;
+  }
+
+  async updateUserStripeInfo(userId: string, stripeCustomerId: string, stripeSubscriptionId: string, subscriptionPlan: string, subscriptionStatus: string): Promise<User | undefined> {
+    const user = this.users.get(userId);
+    if (!user) return undefined;
+    
+    const updatedUser = {
+      ...user,
+      stripeCustomerId,
+      stripeSubscriptionId,
+      subscriptionPlan,
+      subscriptionStatus,
+    };
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+
+  async updateUserSubscriptionStatus(userId: string, status: string): Promise<User | undefined> {
+    const user = this.users.get(userId);
+    if (!user) return undefined;
+    
+    const updatedUser = {
+      ...user,
+      subscriptionStatus: status,
+    };
+    this.users.set(userId, updatedUser);
+    return updatedUser;
   }
 
   // Consent session methods
@@ -277,6 +310,29 @@ export class PostgresStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const result = await this.db.insert(users).values([insertUser]).returning();
+    return result[0];
+  }
+
+  async updateUserStripeInfo(userId: string, stripeCustomerId: string, stripeSubscriptionId: string, subscriptionPlan: string, subscriptionStatus: string): Promise<User | undefined> {
+    const result = await this.db
+      .update(users)
+      .set({ 
+        stripeCustomerId, 
+        stripeSubscriptionId,
+        subscriptionPlan,
+        subscriptionStatus
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return result[0];
+  }
+
+  async updateUserSubscriptionStatus(userId: string, status: string): Promise<User | undefined> {
+    const result = await this.db
+      .update(users)
+      .set({ subscriptionStatus: status })
+      .where(eq(users.id, userId))
+      .returning();
     return result[0];
   }
 

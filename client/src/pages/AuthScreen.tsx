@@ -85,16 +85,24 @@ export const AuthScreen = (): JSX.Element => {
       console.log("Registration/login successful", data);
       setAuthData(data.user);
       
+      // Check if there's a plan parameter in the URL
+      const params = new URLSearchParams(window.location.search);
+      const plan = params.get('plan');
+      
       // Show success message
       toast({ 
         title: `${isSignIn ? 'Welcome back!' : 'Account created successfully!'}`, 
-        description: `${isSignIn ? 'You have been signed in.' : 'Redirecting to your dashboard...'}`,
+        description: `${isSignIn ? 'You have been signed in.' : plan ? 'Redirecting to checkout...' : 'Redirecting to your dashboard...'}`,
       });
       
       // Ensure auth state is set before redirect
-      console.log("Redirecting to dashboard immediately");
+      console.log(plan ? "Redirecting to subscribe" : "Redirecting to dashboard");
       setTimeout(() => {
-        setLocation("/dashboard");
+        if (plan && (plan === 'monthly' || plan === 'annual')) {
+          setLocation(`/subscribe?plan=${plan}`);
+        } else {
+          setLocation("/dashboard");
+        }
       }, 100);
     },
     onError: (error: Error) => {

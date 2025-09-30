@@ -13,6 +13,7 @@ import { Dashboard } from "@/pages/Dashboard";
 import { ConsentSession } from "@/pages/ConsentSession";
 import { ConsentForm } from "@/pages/ConsentForm";
 import { ElementLearnAndEngage } from "@/pages/ElementLearnAndEngage";
+import Subscribe from "@/pages/Subscribe";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -41,6 +42,9 @@ function Router() {
       </Route>
       
       {/* Protected routes (auth required) */}
+      <Route path="/subscribe">
+        {isAuthenticated ? <Subscribe /> : <Redirect to="/register" />}
+      </Route>
       <Route path="/welcome">
         {isAuthenticated ? <WelcomeScreen /> : <Redirect to="/register" />}
       </Route>

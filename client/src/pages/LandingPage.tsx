@@ -311,7 +311,7 @@ export default function LandingPage() {
                   <span>Cancel anytime</span>
                 </li>
               </ul>
-              <Link href="/register">
+              <Link href="/register?plan=monthly">
                 <Button className="w-full bg-[#4ade80] hover:bg-[#22c55e] text-white py-6 text-lg" data-testid="button-subscribe-monthly">
                   Get Started
                 </Button>
@@ -353,7 +353,7 @@ export default function LandingPage() {
                   <span>Best value</span>
                 </li>
               </ul>
-              <Link href="/register">
+              <Link href="/register?plan=annual">
                 <Button className="w-full bg-[#4ade80] hover:bg-[#22c55e] text-white py-6 text-lg" data-testid="button-subscribe-annual">
                   Get Started
                 </Button>
@@ -390,7 +390,7 @@ export default function LandingPage() {
             <div className="flex gap-8 text-sm text-gray-400">
               <a href="#" className="hover:text-white transition">Privacy</a>
               <a href="#" className="hover:text-white transition">Terms</a>
-              <a href="#" className="hover:text-white transition">Support</a>
+              <a href="mailto:support@consentiq.tech" className="hover:text-white transition">support@consentiq.tech</a>
             </div>
           </div>
           <p className="text-center text-gray-400 text-sm mt-8">

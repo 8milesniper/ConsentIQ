@@ -10,6 +10,7 @@ import { analyzeConsentVideo, transcribeAudio, determineAudioMismatch, scaleConf
 import multer from "multer";
 import * as fs from "fs";
 import * as path from "path";
+import Stripe from "stripe";
 
 // Extend Express Request type to include user
 interface AuthenticatedRequest extends Request {
@@ -87,10 +88,45 @@ const requireAuth = (req: Request, res: any, next: any) => {
   }
 };
 
+// Subscription middleware - requires active or trialing subscription
+const requireSubscription = async (req: Request, res: any, next: any) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const user = await storage.getUser(authReq.user.userId);
+    
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    
+    // Check if user has an active or trialing subscription
+    if (user.subscriptionStatus === 'active' || user.subscriptionStatus === 'trialing') {
+      next();
+    } else {
+      res.status(403).json({ 
+        error: "Active subscription required", 
+        message: "Please subscribe to access this feature",
+        subscriptionStatus: user.subscriptionStatus 
+      });
+    }
+  } catch (error) {
+    res.status(500).json({ error: "Failed to verify subscription" });
+  }
+};
+
 // Validation schemas
 const loginSchema = z.object({
   username: z.string().min(3),
   password: z.string().min(6),
+});
+
+// Initialize Stripe
+if (!process.env.STRIPE_SECRET_KEY) {
+  console.error('❌ STRIPE_SECRET_KEY is required');
+  process.exit(1);
+}
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: "2025-08-27.basil",
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -224,17 +260,180 @@ export async function registerRoutes(app: Express): Promise<Server> {
         username: user.username,
         fullName: user.fullName,
         phoneNumber: user.phoneNumber,
-        profilePicture: user.profilePicture
+        profilePicture: user.profilePicture,
+        stripeCustomerId: user.stripeCustomerId,
+        stripeSubscriptionId: user.stripeSubscriptionId,
+        subscriptionStatus: user.subscriptionStatus,
+        subscriptionPlan: user.subscriptionPlan
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to get user info" });
     }
   });
 
+  // Stripe Subscription Routes
+  
+  // Create or get subscription for authenticated user
+  app.post("/api/stripe/create-subscription", requireAuth, async (req, res) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      const user = await storage.getUser(authReq.user.userId);
+      
+      if (!user) {
+        res.status(404).json({ error: "User not found" });
+        return;
+      }
+
+      // If user already has a subscription, check its status
+      if (user.stripeSubscriptionId) {
+        const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId, {
+          expand: ['latest_invoice.payment_intent']
+        });
+        
+        // If active or trialing, user already has access
+        if (subscription.status === 'active' || subscription.status === 'trialing') {
+          const invoice = subscription.latest_invoice as any;
+          const paymentIntent = invoice?.payment_intent;
+          
+          res.json({
+            subscriptionId: subscription.id,
+            clientSecret: paymentIntent?.client_secret || null,
+            status: subscription.status
+          });
+          return;
+        }
+        
+        // If incomplete, reuse it instead of creating a new one
+        if (subscription.status === 'incomplete') {
+          const invoice = subscription.latest_invoice as any;
+          const paymentIntent = invoice?.payment_intent;
+          
+          res.json({
+            subscriptionId: subscription.id,
+            clientSecret: paymentIntent?.client_secret || null,
+            status: subscription.status
+          });
+          return;
+        }
+      }
+
+      // Get plan from request (monthly or annual)
+      const { plan } = req.body;
+      const priceId = plan === 'annual' 
+        ? process.env.STRIPE_ANNUAL_PRICE_ID 
+        : process.env.STRIPE_PRICE_ID;
+
+      if (!priceId) {
+        res.status(500).json({ error: "Price ID not configured" });
+        return;
+      }
+
+      // Create or get Stripe customer
+      let customerId = user.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          metadata: {
+            userId: user.id,
+            username: user.username
+          }
+        });
+        customerId = customer.id;
+      }
+
+      // Create subscription with user metadata for webhook handling
+      const subscription = await stripe.subscriptions.create({
+        customer: customerId,
+        items: [{ price: priceId }],
+        payment_behavior: 'default_incomplete',
+        payment_settings: { save_default_payment_method: 'on_subscription' },
+        expand: ['latest_invoice.payment_intent'],
+        metadata: {
+          userId: user.id,
+        },
+      });
+
+      // Save Stripe info to user - use actual subscription status
+      await storage.updateUserStripeInfo(
+        user.id,
+        customerId,
+        subscription.id,
+        plan || 'monthly',
+        subscription.status
+      );
+
+      const invoice = subscription.latest_invoice as any;
+      const paymentIntent = invoice.payment_intent;
+
+      res.json({
+        subscriptionId: subscription.id,
+        clientSecret: paymentIntent.client_secret,
+      });
+    } catch (error: any) {
+      console.error('Subscription creation error:', error);
+      res.status(500).json({ error: error.message || "Failed to create subscription" });
+    }
+  });
+
+  // Webhook for Stripe events (subscription updates, cancellations, etc.)
+  app.post("/api/stripe/webhook", async (req, res) => {
+    const sig = req.headers['stripe-signature'] as string;
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    
+    try {
+      let event;
+      
+      // Verify webhook signature if secret is configured
+      if (webhookSecret && sig) {
+        try {
+          event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+        } catch (err: any) {
+          console.error('Webhook signature verification failed:', err.message);
+          res.status(400).json({ error: 'Webhook signature verification failed' });
+          return;
+        }
+      } else {
+        // For development without webhook secret
+        console.warn('⚠️ Stripe webhook signature verification skipped - set STRIPE_WEBHOOK_SECRET for production');
+        event = req.body;
+      }
+
+      // Handle subscription events
+      switch (event.type) {
+        case 'invoice.payment_succeeded':
+          // When payment succeeds, update subscription status to active
+          const invoice = event.data.object;
+          if (invoice.subscription) {
+            const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
+            
+            // Update status to active when payment succeeds
+            if (subscription.metadata?.userId) {
+              await storage.updateUserSubscriptionStatus(subscription.metadata.userId, subscription.status);
+            }
+          }
+          break;
+          
+        case 'customer.subscription.updated':
+        case 'customer.subscription.deleted':
+          const subscription = event.data.object;
+          
+          // Update user's subscription status
+          if (subscription.metadata?.userId) {
+            await storage.updateUserSubscriptionStatus(subscription.metadata.userId, subscription.status);
+          }
+          break;
+      }
+
+      res.json({ received: true });
+    } catch (error: any) {
+      console.error('Webhook error:', error);
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   // Consent Session Routes
   
-  // Create new consent session (requires authentication)
-  app.post("/api/consent/sessions", requireAuth, async (req, res) => {
+  // Create new consent session (requires authentication and active subscription)
+  app.post("/api/consent/sessions", requireAuth, requireSubscription, async (req, res) => {
     try {
       const sessionData = insertConsentSessionSchema.parse(req.body);
       const session = await storage.createConsentSession(sessionData);
