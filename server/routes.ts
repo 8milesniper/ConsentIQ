@@ -383,15 +383,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
         customerId = customer.id;
-        
-        // Save customer ID
-        await storage.updateUserStripeInfo(
-          user.id,
-          customerId,
-          null,
-          null,
-          null
-        );
       }
 
       // Create Checkout Session for subscription
