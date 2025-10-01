@@ -114,21 +114,14 @@ export const AuthScreen = (): JSX.Element => {
           setLocation('/dashboard');
         }, 100);
       } else {
-        // User needs to subscribe - check if they selected a plan
-        const params = new URLSearchParams(window.location.search);
-        const plan = params.get('plan');
-        
+        // User needs to subscribe - show plan picker
         toast({ 
           title: `${isSignIn ? 'Welcome back!' : 'Account created successfully!'}`, 
-          description: plan ? 'Redirecting to checkout...' : 'Redirecting to choose your plan...',
+          description: 'Choose your plan to continue...',
         });
         
         setTimeout(() => {
-          if (plan && (plan === 'monthly' || plan === 'annual')) {
-            setLocation(`/subscribe?plan=${plan}`);
-          } else {
-            setLocation('/subscribe');
-          }
+          setLocation('/subscribe');
         }, 100);
       }
     },
