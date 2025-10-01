@@ -351,32 +351,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // If user already has a subscription, check its status
       if (user.stripeSubscriptionId) {
-        const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId, {
-          expand: ['latest_invoice.payment_intent']
-        });
+        const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
         
         // If active, user already has access
         if (subscription.status === 'active') {
-          const invoice = subscription.latest_invoice as any;
-          const paymentIntent = invoice?.payment_intent;
-          
           res.json({
-            subscriptionId: subscription.id,
-            clientSecret: paymentIntent?.client_secret || null,
-            status: subscription.status
-          });
-          return;
-        }
-        
-        // If incomplete, reuse it instead of creating a new one
-        if (subscription.status === 'incomplete') {
-          const invoice = subscription.latest_invoice as any;
-          const paymentIntent = invoice?.payment_intent;
-          
-          res.json({
-            subscriptionId: subscription.id,
-            clientSecret: paymentIntent?.client_secret || null,
-            status: subscription.status
+            status: 'active'
           });
           return;
         }
@@ -403,47 +383,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
         customerId = customer.id;
+        
+        // Save customer ID
+        await storage.updateUserStripeInfo(
+          user.id,
+          customerId,
+          null,
+          null,
+          null
+        );
       }
 
-      // Create subscription with user metadata for webhook handling
-      const subscription = await stripe.subscriptions.create({
+      // Create Checkout Session for subscription
+      const session = await stripe.checkout.sessions.create({
         customer: customerId,
-        items: [{ price: priceId }],
-        payment_behavior: 'default_incomplete',
-        payment_settings: { save_default_payment_method: 'on_subscription' },
-        expand: ['latest_invoice.payment_intent'],
+        payment_method_types: ['card'],
+        line_items: [{
+          price: priceId,
+          quantity: 1,
+        }],
+        mode: 'subscription',
+        success_url: `${req.protocol}://${req.get('host')}/dashboard`,
+        cancel_url: `${req.protocol}://${req.get('host')}/subscribe?plan=${plan}`,
         metadata: {
           userId: user.id,
+          plan: plan || 'monthly',
         },
       });
 
-      // Save Stripe info to user - use actual subscription status
-      await storage.updateUserStripeInfo(
-        user.id,
-        customerId,
-        subscription.id,
-        plan || 'monthly',
-        subscription.status
-      );
-
-      const invoice = subscription.latest_invoice as any;
-      const paymentIntent = invoice?.payment_intent;
-
-      if (!paymentIntent || !paymentIntent.client_secret) {
-        console.error('Stripe subscription created but missing payment_intent:', {
-          subscriptionId: subscription.id,
-          status: subscription.status,
-          hasInvoice: !!invoice,
-          hasPaymentIntent: !!paymentIntent,
-          priceId,
-        });
-        res.status(500).json({ error: "Failed to initialize payment" });
-        return;
-      }
-
       res.json({
-        subscriptionId: subscription.id,
-        clientSecret: paymentIntent.client_secret,
+        sessionId: session.id,
       });
     } catch (error: any) {
       console.error('Subscription creation error:', error);
@@ -476,6 +445,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Handle subscription events
       switch (event.type) {
+        case 'checkout.session.completed':
+          // When checkout session completes, save subscription info
+          const session = event.data.object;
+          if (session.mode === 'subscription' && session.subscription && session.metadata?.userId) {
+            const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
+            await storage.updateUserStripeInfo(
+              session.metadata.userId,
+              session.customer as string,
+              subscription.id,
+              session.metadata.plan || 'monthly',
+              subscription.status
+            );
+          }
+          break;
+
         case 'invoice.payment_succeeded':
           // When payment succeeds, update subscription status to active and clear deletion schedule
           const invoice = event.data.object;
