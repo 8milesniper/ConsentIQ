@@ -395,6 +395,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create Checkout Session for subscription
+      const baseUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://www.consentiq.tech'
+        : `${req.protocol}://${req.get('host')}`;
+        
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
         payment_method_types: ['card'],
@@ -403,8 +407,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           quantity: 1,
         }],
         mode: 'subscription',
-        success_url: `${req.protocol}://${req.get('host')}/dashboard`,
-        cancel_url: `${req.protocol}://${req.get('host')}/subscribe?plan=${plan}`,
+        success_url: `${baseUrl}/dashboard`,
+        cancel_url: `${baseUrl}/subscribe?plan=${plan}`,
         metadata: {
           userId: user.id,
           plan: plan || 'monthly',
