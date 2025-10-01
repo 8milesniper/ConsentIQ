@@ -449,7 +449,7 @@ export const ConsentForm = (): JSX.Element => {
         {/* Content */}
         <div className="flex-1 bg-white rounded-t-3xl p-6">
           <div className="text-center mb-8">
-            <div className="w-20 h-20 mx-auto mb-4 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
+            <div className="w-24 h-24 mx-auto mb-4 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
               {/* Initiator's actual profile picture */}
               {session?.initiator?.profilePicture ? (
                 <img 
@@ -459,32 +459,32 @@ export const ConsentForm = (): JSX.Element => {
                   data-testid="img-initiator-profile"
                 />
               ) : (
-                <div className="w-16 h-16 bg-gray-400 rounded-full flex items-center justify-center text-white text-lg font-bold">
+                <div className="w-full h-full bg-gray-400 rounded-full flex items-center justify-center text-white text-2xl font-bold">
                   {session?.initiator?.fullName?.charAt(0)?.toUpperCase() || "?"}
                 </div>
               )}
             </div>
-            <h2 className="text-xl font-semibold mb-2">You have received a consent request</h2>
-            <div className="inline-block bg-[#4ade80] text-white px-4 py-2 rounded-full font-medium">
+            <h2 className="text-2xl font-semibold mb-3">You have received a consent request</h2>
+            <div className="inline-block bg-[#4ade80] text-white px-6 py-3 rounded-full font-medium text-lg">
               {session?.initiator?.fullName || "ConsentIQ User"}
             </div>
           </div>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               <div>
-                <h3 className="text-lg font-semibold mb-4">Step 1.</h3>
+                <h3 className="text-xl font-semibold mb-6">Step 1.</h3>
                 
                 <FormField
                   control={form.control}
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Your name</FormLabel>
+                      <FormLabel className="text-base font-medium">Your name</FormLabel>
                       <FormControl>
                         <Input 
                           placeholder="Enter your name" 
-                          className="border-0 border-b border-gray-300 rounded-none bg-transparent focus:border-[#4ade80] focus-visible:ring-0"
+                          className="border-0 border-b-2 border-gray-300 rounded-none bg-transparent focus:border-[#4ade80] focus-visible:ring-0 text-base py-3"
                           {...field}
                           data-testid="input-name"
                         />
@@ -498,12 +498,12 @@ export const ConsentForm = (): JSX.Element => {
                   control={form.control}
                   name="phone"
                   render={({ field }) => (
-                    <FormItem className="mt-6">
-                      <FormLabel>Your phone number</FormLabel>
+                    <FormItem className="mt-8">
+                      <FormLabel className="text-base font-medium">Your phone number</FormLabel>
                       <FormControl>
                         <Input 
                           placeholder="Enter your phone number" 
-                          className="border-0 border-b border-gray-300 rounded-none bg-transparent focus:border-[#4ade80] focus-visible:ring-0"
+                          className="border-0 border-b-2 border-gray-300 rounded-none bg-transparent focus:border-[#4ade80] focus-visible:ring-0 text-base py-3"
                           {...field}
                           data-testid="input-phone"
                         />
@@ -513,42 +513,44 @@ export const ConsentForm = (): JSX.Element => {
                   )}
                 />
 
-                <div className="flex items-center justify-between mt-8">
-                  <span className="text-lg">Are you over 18?</span>
-                  <div className="flex gap-4">
-                    <Button
-                      type="button"
-                      variant={!form.watch("isOver18") ? "default" : "outline"}
-                      className={`w-16 h-12 rounded-full ${
-                        !form.watch("isOver18") 
-                          ? "bg-red-500 text-white" 
-                          : "border-red-500 text-red-500"
-                      }`}
-                      onClick={() => form.setValue("isOver18", false as any)}
-                      data-testid="button-no-over-18"
-                    >
-                      No
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={form.watch("isOver18") ? "default" : "outline"}
-                      className={`w-16 h-12 rounded-full ${
-                        form.watch("isOver18") 
-                          ? "bg-[#4ade80] text-white" 
-                          : "border-[#4ade80] text-[#4ade80]"
-                      }`}
-                      onClick={() => form.setValue("isOver18", true)}
-                      data-testid="button-yes-over-18"
-                    >
-                      Yes
-                    </Button>
+                <div className="mt-10">
+                  <div className="flex flex-col space-y-4">
+                    <span className="text-xl font-semibold">Are you over 18?</span>
+                    <div className="flex gap-4 justify-center">
+                      <Button
+                        type="button"
+                        variant={!form.watch("isOver18") ? "default" : "outline"}
+                        className={`w-24 h-14 rounded-full text-lg font-semibold ${
+                          !form.watch("isOver18") 
+                            ? "bg-red-500 text-white hover:bg-red-600" 
+                            : "border-2 border-red-500 text-red-500 hover:bg-red-50"
+                        }`}
+                        onClick={() => form.setValue("isOver18", false as any)}
+                        data-testid="button-no-over-18"
+                      >
+                        No
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={form.watch("isOver18") ? "default" : "outline"}
+                        className={`w-24 h-14 rounded-full text-lg font-semibold ${
+                          form.watch("isOver18") 
+                            ? "bg-[#4ade80] text-white hover:bg-[#22c55e]" 
+                            : "border-2 border-[#4ade80] text-[#4ade80] hover:bg-green-50"
+                        }`}
+                        onClick={() => form.setValue("isOver18", true)}
+                        data-testid="button-yes-over-18"
+                      >
+                        Yes
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
 
               <Button
                 type="submit"
-                className="w-full bg-[#4ade80] hover:bg-[#22c55e] text-white font-semibold py-3 rounded-xl mt-8"
+                className="w-full bg-[#4ade80] hover:bg-[#22c55e] text-white font-semibold py-4 rounded-xl mt-8 text-lg"
                 data-testid="button-continue"
               >
                 Continue
