@@ -91,11 +91,15 @@ export const AuthScreen = (): JSX.Element => {
       return response.json();
     },
     onSuccess: (data) => {
-      console.log("Registration/login successful", data);
+      console.log("=== REGISTRATION/LOGIN SUCCESSFUL ===");
+      console.log("Full response data:", data);
+      console.log("User subscription status:", data.user.subscriptionStatus);
+      console.log("Subscription status type:", typeof data.user.subscriptionStatus);
       setAuthData(data.user);
       
       // Redirect based on ACTUAL subscription status from API response
       const hasActiveSubscription = data.user.subscriptionStatus === 'active';
+      console.log("Has active subscription?", hasActiveSubscription);
       
       if (hasActiveSubscription) {
         // User has paid - go to dashboard

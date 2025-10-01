@@ -9,14 +9,7 @@ export const Dashboard = (): JSX.Element => {
   const [, setLocation] = useLocation();
   const { user, logout } = useAuth();
 
-  // Redirect to payment if no active subscription
-  useEffect(() => {
-    if (user && user.subscriptionStatus !== 'active') {
-      // Preserve the plan from registration or default to monthly
-      const plan = user.subscriptionPlan || 'monthly';
-      setLocation(`/subscribe?plan=${plan}`);
-    }
-  }, [user, setLocation]);
+  // Subscription check is handled by RequireSubscription guard in App.tsx - no redirect needed here
 
   const handleLogout = async () => {
     await logout();
