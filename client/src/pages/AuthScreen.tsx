@@ -90,12 +90,15 @@ export const AuthScreen = (): JSX.Element => {
       
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log("=== REGISTRATION/LOGIN SUCCESSFUL ===");
       console.log("Full response data:", data);
       console.log("User subscription status:", data.user.subscriptionStatus);
       console.log("Subscription status type:", typeof data.user.subscriptionStatus);
-      setAuthData(data.user);
+      
+      // Wait for auth context to refetch fresh user data from server
+      await setAuthData(data.user);
+      console.log("Auth context updated with fresh server data");
       
       // Redirect based on ACTUAL subscription status from API response
       const hasActiveSubscription = data.user.subscriptionStatus === 'active';

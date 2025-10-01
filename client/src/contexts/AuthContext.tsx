@@ -18,7 +18,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  setAuthData: (user: User) => void;
+  setAuthData: (user: User) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -57,10 +57,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const setAuthData = (user: User) => {
+  const setAuthData = async (user: User) => {
     setUser(user);
-    setIsLoading(false); // Ensure loading state is false
-    // No token storage needed - handled by HTTP-only cookies
+    setIsLoading(true); // Show loading while we refetch
+    // Immediately refetch from server to get fresh subscription status
+    await validateSession();
   };
 
   const logout = async () => {
