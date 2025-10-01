@@ -42,7 +42,9 @@ export default function LandingPage() {
             <Link href="/login">
               <Button variant="ghost" className="text-white hover:bg-slate-800" data-testid="button-login">Login</Button>
             </Link>
-            <Button onClick={scrollToPricing} className="bg-[#4ade80] hover:bg-[#22c55e] text-white" data-testid="button-get-started-nav">Get Started</Button>
+            <Link href="/register">
+              <Button className="bg-[#4ade80] hover:bg-[#22c55e] text-white" data-testid="button-get-started-nav">Get Started</Button>
+            </Link>
           </div>
         </div>
       </nav>
@@ -67,9 +69,11 @@ export default function LandingPage() {
           </p>
 
           <div className="flex justify-center items-center mb-12">
-            <Button onClick={scrollToPricing} size="lg" className="bg-[#4ade80] hover:bg-[#22c55e] text-white text-lg px-8 py-6" data-testid="button-get-started-hero">
-              📱 Get Started Now
-            </Button>
+            <Link href="/register">
+              <Button size="lg" className="bg-[#4ade80] hover:bg-[#22c55e] text-white text-lg px-8 py-6" data-testid="button-get-started-hero">
+                📱 Get Started Now
+              </Button>
+            </Link>
           </div>
 
           <div className="flex flex-wrap justify-center gap-8 text-sm">
@@ -324,7 +328,7 @@ export default function LandingPage() {
                   <span>Cancel anytime</span>
                 </li>
               </ul>
-              <Link href="/register?plan=monthly">
+              <Link href="/register">
                 <Button className="w-full bg-[#4ade80] hover:bg-[#22c55e] text-white py-6 text-lg" data-testid="button-subscribe-monthly">
                   Get Started
                 </Button>
@@ -366,7 +370,7 @@ export default function LandingPage() {
                   <span>Best value</span>
                 </li>
               </ul>
-              <Link href="/register?plan=annual">
+              <Link href="/register">
                 <Button className="w-full bg-[#4ade80] hover:bg-[#22c55e] text-white py-6 text-lg" data-testid="button-subscribe-annual">
                   Get Started
                 </Button>
@@ -383,9 +387,11 @@ export default function LandingPage() {
           <p className="text-xl mb-8 text-white/90">
             Join thousands of smart guys who are taking control of their safety and building better relationships.
           </p>
-          <Button onClick={scrollToPricing} size="lg" className="bg-white text-slate-900 hover:bg-slate-100 text-lg px-12 py-6 font-bold" data-testid="button-get-started-cta">
-            🔒 Get Started Now
-          </Button>
+          <Link href="/register">
+            <Button size="lg" className="bg-white text-slate-900 hover:bg-slate-100 text-lg px-12 py-6 font-bold" data-testid="button-get-started-cta">
+              🔒 Get Started Now
+            </Button>
+          </Link>
           <p className="text-sm mt-4 text-white/80">No credit card required • 100% private and secure</p>
         </div>
       </section>
