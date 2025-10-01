@@ -135,6 +135,15 @@ export const AuthScreen = (): JSX.Element => {
   });
 
   const onSubmit = (data: CreateAccountData | SignInData) => {
+    // Require profile picture for registration (not for sign-in)
+    if (!isSignIn && !profileImage) {
+      toast({
+        title: "Profile picture required",
+        description: "Please upload a photo for identity verification.",
+        variant: "destructive"
+      });
+      return;
+    }
     authMutation.mutate(data);
   };
 
@@ -179,7 +188,7 @@ export const AuthScreen = (): JSX.Element => {
             {/* Profile Picture - Only show for account creation */}
             {!isSignIn && (
               <div className="text-center">
-                <p className="text-white font-medium mb-4">Profile Picture</p>
+                <p className="text-white font-medium mb-4">Profile Picture <span className="text-red-500">*</span></p>
                 <div className="relative mx-auto w-24 h-24 mb-4">
                   <div className="w-full h-full rounded-full bg-gray-700 border-2 border-gray-600 flex items-center justify-center overflow-hidden">
                     {profileImage ? (
