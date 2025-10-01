@@ -32,10 +32,14 @@ export const AuthScreen = (): JSX.Element => {
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isSignIn, setIsSignIn] = useState(false);
 
-  // Redirect already-authenticated users to dashboard
+  // Redirect already-authenticated users based on subscription status
   useEffect(() => {
     if (isAuthenticated && user) {
-      setLocation('/dashboard');
+      if (user.subscriptionStatus === 'active') {
+        setLocation('/dashboard');
+      } else {
+        setLocation('/subscribe');
+      }
     }
   }, [isAuthenticated, user, setLocation]);
 
@@ -89,14 +93,28 @@ export const AuthScreen = (): JSX.Element => {
     onSuccess: async (data) => {
       await setAuthData(data.user);
       
-      toast({ 
-        title: `${isSignIn ? 'Welcome back!' : 'Account created successfully!'}`, 
-        description: 'Redirecting to your dashboard...',
-      });
+      // Check subscription status to determine redirect
+      const hasActiveSubscription = data.user.subscriptionStatus === 'active';
       
-      setTimeout(() => {
-        setLocation('/dashboard');
-      }, 100);
+      if (hasActiveSubscription) {
+        // Existing user with subscription - go to dashboard
+        toast({ 
+          title: 'Welcome back!', 
+          description: 'Redirecting to your dashboard...',
+        });
+        setTimeout(() => {
+          setLocation('/dashboard');
+        }, 100);
+      } else {
+        // New user or unpaid user - must subscribe first
+        toast({ 
+          title: `${isSignIn ? 'Welcome back!' : 'Account created successfully!'}`, 
+          description: 'Complete payment to access your dashboard...',
+        });
+        setTimeout(() => {
+          setLocation('/subscribe');
+        }, 100);
+      }
     },
     onError: (error: Error) => {
       toast({ 

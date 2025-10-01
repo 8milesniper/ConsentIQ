@@ -1,15 +1,36 @@
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, CheckCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 export const Dashboard = (): JSX.Element => {
   const [, setLocation] = useLocation();
   const { user, logout } = useAuth();
+  const { toast } = useToast();
+  const [showWelcome, setShowWelcome] = useState(false);
 
-  // Subscription check is handled by RequireSubscription guard in App.tsx - no redirect needed here
+  // Show congratulations message for new subscribers
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentSuccess = urlParams.get('payment_success') === '1';
+    
+    if (paymentSuccess && user?.subscriptionStatus === 'active') {
+      setShowWelcome(true);
+      toast({
+        title: "🎉 Congrats, account upgraded!",
+        description: "Your subscription is now active. Welcome to ConsentIQ!",
+      });
+      
+      // Clean URL
+      window.history.replaceState({}, document.title, '/dashboard');
+      
+      // Hide welcome banner after 5 seconds
+      setTimeout(() => setShowWelcome(false), 5000);
+    }
+  }, [user, toast]);
 
   const handleLogout = async () => {
     await logout();
@@ -35,6 +56,18 @@ export const Dashboard = (): JSX.Element => {
         backgroundImage: "linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><rect width=\"100\" height=\"100\" fill=\"%23000\"/><circle cx=\"20\" cy=\"20\" r=\"2\" fill=\"%23333\"/><circle cx=\"80\" cy=\"30\" r=\"1.5\" fill=\"%23333\"/><circle cx=\"60\" cy=\"70\" r=\"1\" fill=\"%23333\"/></svg>')"
       }}
     >
+      {/* Welcome Banner for New Subscribers */}
+      {showWelcome && (
+        <div className="absolute top-0 left-0 right-0 z-50">
+          <Alert className="bg-green-900/90 border-green-800 text-white rounded-none" data-testid="alert-welcome">
+            <CheckCircle className="h-4 w-4" />
+            <AlertDescription>
+              🎉 <strong>Congrats, account upgraded!</strong> Your subscription is now active. Welcome to ConsentIQ!
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+
       {/* Account Deletion Warning Banner */}
       {daysUntilDeletion !== null && daysUntilDeletion > 0 && (
         <div className="absolute top-0 left-0 right-0 z-50">
@@ -62,7 +95,7 @@ export const Dashboard = (): JSX.Element => {
       )}
       
       {/* Header */}
-      <div className={`absolute ${daysUntilDeletion !== null && daysUntilDeletion > 0 ? 'top-24' : 'top-12'} right-6 text-white`}>
+      <div className={`absolute ${showWelcome ? 'top-24' : (daysUntilDeletion !== null && daysUntilDeletion > 0 ? 'top-24' : 'top-12')} right-6 text-white`}>
         <div className="flex items-center gap-4">
           <button
             onClick={handleLogout}
@@ -117,17 +150,6 @@ export const Dashboard = (): JSX.Element => {
             <span className="mr-2">+</span>
             Start New
           </Button>
-
-          {/* Upgrade Plan Button - only show if no active subscription */}
-          {user?.subscriptionStatus !== 'active' && (
-            <Button
-              onClick={() => setLocation("/subscribe")}
-              className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-full text-lg transition-colors duration-200"
-              data-testid="button-upgrade-plan"
-            >
-              Upgrade Plan
-            </Button>
-          )}
         </div>
 
         {/* Bottom Navigation */}
