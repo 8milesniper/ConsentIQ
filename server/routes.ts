@@ -427,7 +427,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       const invoice = subscription.latest_invoice as any;
-      const paymentIntent = invoice.payment_intent;
+      const paymentIntent = invoice?.payment_intent;
+
+      if (!paymentIntent || !paymentIntent.client_secret) {
+        console.error('Stripe subscription created but missing payment_intent:', {
+          subscriptionId: subscription.id,
+          status: subscription.status,
+          hasInvoice: !!invoice,
+          hasPaymentIntent: !!paymentIntent,
+          priceId,
+        });
+        res.status(500).json({ error: "Failed to initialize payment" });
+        return;
+      }
 
       res.json({
         subscriptionId: subscription.id,
