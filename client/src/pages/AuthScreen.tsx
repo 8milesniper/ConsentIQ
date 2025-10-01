@@ -32,14 +32,10 @@ export const AuthScreen = (): JSX.Element => {
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isSignIn, setIsSignIn] = useState(false);
 
-  // Redirect already-authenticated users based on subscription status
+  // Redirect already-authenticated users to dashboard
   useEffect(() => {
     if (isAuthenticated && user) {
-      if (user.subscriptionStatus === 'active') {
-        setLocation('/dashboard');
-      } else {
-        setLocation('/subscribe');
-      }
+      setLocation('/dashboard');
     }
   }, [isAuthenticated, user, setLocation]);
 
@@ -91,39 +87,16 @@ export const AuthScreen = (): JSX.Element => {
       return response.json();
     },
     onSuccess: async (data) => {
-      console.log("=== REGISTRATION/LOGIN SUCCESSFUL ===");
-      console.log("Full response data:", data);
-      console.log("User subscription status:", data.user.subscriptionStatus);
-      console.log("Subscription status type:", typeof data.user.subscriptionStatus);
-      
-      // Wait for auth context to refetch fresh user data from server
       await setAuthData(data.user);
-      console.log("Auth context updated with fresh server data");
       
-      // Redirect based on ACTUAL subscription status from API response
-      const hasActiveSubscription = data.user.subscriptionStatus === 'active';
-      console.log("Has active subscription?", hasActiveSubscription);
+      toast({ 
+        title: `${isSignIn ? 'Welcome back!' : 'Account created successfully!'}`, 
+        description: 'Redirecting to your dashboard...',
+      });
       
-      if (hasActiveSubscription) {
-        // User has paid - go to dashboard
-        toast({ 
-          title: 'Welcome back!', 
-          description: 'Redirecting to your dashboard...',
-        });
-        setTimeout(() => {
-          setLocation('/dashboard');
-        }, 100);
-      } else {
-        // User needs to subscribe - show plan picker
-        toast({ 
-          title: `${isSignIn ? 'Welcome back!' : 'Account created successfully!'}`, 
-          description: 'Choose your plan to continue...',
-        });
-        
-        setTimeout(() => {
-          setLocation('/subscribe');
-        }, 100);
-      }
+      setTimeout(() => {
+        setLocation('/dashboard');
+      }, 100);
     },
     onError: (error: Error) => {
       toast({ 

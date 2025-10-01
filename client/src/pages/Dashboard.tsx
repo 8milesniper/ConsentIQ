@@ -117,6 +117,17 @@ export const Dashboard = (): JSX.Element => {
             <span className="mr-2">+</span>
             Start New
           </Button>
+
+          {/* Upgrade Plan Button - only show if no active subscription */}
+          {user?.subscriptionStatus !== 'active' && (
+            <Button
+              onClick={() => setLocation("/subscribe")}
+              className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-full text-lg transition-colors duration-200"
+              data-testid="button-upgrade-plan"
+            >
+              Upgrade Plan
+            </Button>
+          )}
         </div>
 
         {/* Bottom Navigation */}
