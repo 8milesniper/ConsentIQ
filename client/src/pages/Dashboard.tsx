@@ -5,32 +5,57 @@ import { AlertCircle, CheckCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 export const Dashboard = (): JSX.Element => {
   const [, setLocation] = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const { toast } = useToast();
   const [showWelcome, setShowWelcome] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
 
-  // Show congratulations message for new subscribers
+  // Verify payment and activate subscription when returning from Stripe
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const paymentSuccess = urlParams.get('payment_success') === '1';
+    const verifyPayment = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const paymentSuccess = urlParams.get('payment_success') === '1';
+      
+      if (paymentSuccess && !isVerifying) {
+        setIsVerifying(true);
+        
+        try {
+          // Call backend to verify payment and update subscription status
+          const response = await apiRequest("POST", "/api/stripe/verify-payment", {});
+          
+          if (response.ok) {
+            const data = await response.json();
+            
+            // Refresh user data to get updated subscription status
+            await refreshUser();
+            
+            if (data.subscriptionStatus === 'active') {
+              setShowWelcome(true);
+              toast({
+                title: "🎉 Congrats, account upgraded!",
+                description: "Your subscription is now active. Welcome to ConsentIQ!",
+              });
+              
+              // Hide welcome banner after 5 seconds
+              setTimeout(() => setShowWelcome(false), 5000);
+            }
+          }
+        } catch (error) {
+          console.error('Payment verification failed:', error);
+        } finally {
+          // Clean URL
+          window.history.replaceState({}, document.title, '/dashboard');
+          setIsVerifying(false);
+        }
+      }
+    };
     
-    if (paymentSuccess && user?.subscriptionStatus === 'active') {
-      setShowWelcome(true);
-      toast({
-        title: "🎉 Congrats, account upgraded!",
-        description: "Your subscription is now active. Welcome to ConsentIQ!",
-      });
-      
-      // Clean URL
-      window.history.replaceState({}, document.title, '/dashboard');
-      
-      // Hide welcome banner after 5 seconds
-      setTimeout(() => setShowWelcome(false), 5000);
-    }
-  }, [user, toast]);
+    verifyPayment();
+  }, []); // Only run once on mount
 
   const handleLogout = async () => {
     await logout();

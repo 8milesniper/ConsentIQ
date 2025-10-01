@@ -20,6 +20,7 @@ interface AuthContextType {
   isLoading: boolean;
   setAuthData: (user: User) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -78,6 +79,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const refreshUser = async () => {
+    await validateSession();
+  };
+
   const isAuthenticated = !!user;
 
   const value: AuthContextType = {
@@ -86,6 +91,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isLoading,
     setAuthData,
     logout,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

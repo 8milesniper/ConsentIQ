@@ -406,12 +406,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
       });
 
+      // Save the customer ID if it's new
+      if (customerId !== user.stripeCustomerId) {
+        await storage.updateUserStripeInfo(
+          user.id,
+          customerId,
+          null as any,
+          null as any,
+          'incomplete'
+        );
+      }
+
       res.json({
         sessionId: session.id,
       });
     } catch (error: any) {
       console.error('Subscription creation error:', error);
       res.status(500).json({ error: error.message || "Failed to create subscription" });
+    }
+  });
+
+  // Verify and activate subscription after payment (called when user returns from Stripe)
+  app.post("/api/stripe/verify-payment", requireAuth, async (req, res) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      const user = await storage.getUser(authReq.user.userId);
+      
+      if (!user) {
+        res.status(404).json({ error: "User not found" });
+        return;
+      }
+
+      // If no customer ID, can't verify payment
+      if (!user.stripeCustomerId) {
+        res.status(400).json({ error: "No payment information found" });
+        return;
+      }
+
+      // Get all subscriptions for this customer
+      const subscriptions = await stripe.subscriptions.list({
+        customer: user.stripeCustomerId,
+        limit: 1,
+        status: 'all',
+      });
+
+      if (subscriptions.data.length === 0) {
+        res.status(400).json({ error: "No subscription found" });
+        return;
+      }
+
+      // Get the most recent subscription
+      const subscription = subscriptions.data[0];
+      
+      // Determine plan from price ID
+      const priceId = subscription.items.data[0]?.price.id;
+      const plan = priceId === process.env.STRIPE_ANNUAL_PRICE_ID ? 'annual' : 'monthly';
+
+      // Update user's subscription info
+      await storage.updateUserStripeInfo(
+        user.id,
+        user.stripeCustomerId,
+        subscription.id,
+        plan,
+        subscription.status
+      );
+
+      // Return updated user
+      const updatedUser = await storage.getUser(user.id);
+      res.json({ 
+        success: true,
+        subscriptionStatus: subscription.status,
+        user: updatedUser
+      });
+    } catch (error: any) {
+      console.error('Payment verification error:', error);
+      res.status(500).json({ error: error.message || "Failed to verify payment" });
     }
   });
 
