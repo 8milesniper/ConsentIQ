@@ -98,10 +98,25 @@ export default function Subscribe() {
       setPlan('annual');
     }
 
+    console.log("=== Subscribe Page Initializing ===");
+    console.log("Selected plan:", planParam || 'monthly');
+    console.log("Making API request to create subscription...");
+
     // Create subscription
     apiRequest("POST", "/api/stripe/create-subscription", { plan: planParam || 'monthly' })
-      .then((res) => res.json())
+      .then((res) => {
+        console.log("API response status:", res.status);
+        if (!res.ok) {
+          console.error("API returned error status:", res.status);
+          return res.json().then(err => {
+            console.error("Error details:", err);
+            throw new Error(err.error || 'API request failed');
+          });
+        }
+        return res.json();
+      })
       .then((data) => {
+        console.log("Subscription data received:", data);
         if (data.status === 'active') {
           toast({
             title: "Already Subscribed",
@@ -109,18 +124,23 @@ export default function Subscribe() {
           });
           setLocation('/dashboard');
         } else if (data.clientSecret) {
+          console.log("Got client secret, ready for payment");
           setClientSecret(data.clientSecret);
         } else {
+          console.error("No client secret in response:", data);
           throw new Error('No client secret received');
         }
       })
       .catch((error) => {
+        console.error('=== SUBSCRIPTION INITIALIZATION FAILED ===');
+        console.error('Error:', error);
+        console.error('Error message:', error.message);
+        
         toast({
           title: "Error",
-          description: "Failed to initialize subscription. Please try again.",
+          description: error.message || "Failed to initialize subscription. Please try again.",
           variant: "destructive",
         });
-        console.error('Subscription init error:', error);
       });
   }, [toast, setLocation]);
 

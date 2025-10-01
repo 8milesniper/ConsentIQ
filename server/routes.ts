@@ -135,7 +135,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.clearCookie('auth_token', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      sameSite: 'lax',
+      path: '/',
     });
     res.json({ success: true });
   });
@@ -174,11 +175,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       // Set secure HTTP-only cookie instead of sending token in response
+      // No subdomains, so sameSite: 'lax' works fine
       res.cookie('auth_token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        sameSite: 'lax',
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        path: '/',
       });
 
       res.status(201).json({ 
@@ -233,11 +236,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       // Set secure HTTP-only cookie instead of sending token in response
+      // No subdomains, so sameSite: 'lax' works fine
       res.cookie('auth_token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        sameSite: 'lax',
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        path: '/',
       });
 
       res.json({ 
