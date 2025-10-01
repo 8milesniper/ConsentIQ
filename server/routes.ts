@@ -182,7 +182,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       res.status(201).json({ 
-        user: { id: user.id, username: user.username }
+        user: {
+          id: user.id,
+          username: user.username,
+          fullName: user.fullName,
+          phoneNumber: user.phoneNumber,
+          profilePicture: user.profilePicture,
+          stripeCustomerId: user.stripeCustomerId,
+          stripeSubscriptionId: user.stripeSubscriptionId,
+          subscriptionStatus: user.subscriptionStatus,
+          subscriptionPlan: user.subscriptionPlan,
+          subscriptionEndDate: user.subscriptionEndDate,
+          accountDeletionDate: user.accountDeletionDate
+        }
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -234,7 +246,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           username: user.username,
           fullName: user.fullName,
           phoneNumber: user.phoneNumber,
-          profilePicture: user.profilePicture
+          profilePicture: user.profilePicture,
+          stripeCustomerId: user.stripeCustomerId,
+          stripeSubscriptionId: user.stripeSubscriptionId,
+          subscriptionStatus: user.subscriptionStatus,
+          subscriptionPlan: user.subscriptionPlan,
+          subscriptionEndDate: user.subscriptionEndDate,
+          accountDeletionDate: user.accountDeletionDate
         }
       });
     } catch (error) {

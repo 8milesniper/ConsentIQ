@@ -28,11 +28,20 @@ type SignInData = z.infer<typeof signInSchema>;
 export const AuthScreen = (): JSX.Element => {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { setAuthData, isAuthenticated } = useAuth();
+  const { setAuthData, isAuthenticated, user } = useAuth();
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isSignIn, setIsSignIn] = useState(false);
 
-  // The App.tsx routing will handle redirects automatically
+  // Redirect already-authenticated users based on subscription status
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.subscriptionStatus === 'active') {
+        setLocation('/dashboard');
+      } else {
+        setLocation('/subscribe');
+      }
+    }
+  }, [isAuthenticated, user, setLocation]);
 
   const form = useForm<CreateAccountData | SignInData>({
     resolver: zodResolver(isSignIn ? signInSchema : createAccountSchema),
@@ -85,26 +94,36 @@ export const AuthScreen = (): JSX.Element => {
       console.log("Registration/login successful", data);
       setAuthData(data.user);
       
-      // Check if there's a plan parameter in the URL
-      const params = new URLSearchParams(window.location.search);
-      const plan = params.get('plan');
+      // Redirect based on ACTUAL subscription status from API response
+      const hasActiveSubscription = data.user.subscriptionStatus === 'active';
       
-      // Show success message
-      toast({ 
-        title: `${isSignIn ? 'Welcome back!' : 'Account created successfully!'}`, 
-        description: `${isSignIn ? 'You have been signed in.' : plan ? 'Redirecting to checkout...' : 'Redirecting to choose your plan...'}`,
-      });
-      
-      // Ensure auth state is set before redirect
-      console.log(plan ? `Redirecting to subscribe with plan: ${plan}` : "No plan - redirecting to subscribe to choose");
-      setTimeout(() => {
-        if (plan && (plan === 'monthly' || plan === 'annual')) {
-          setLocation(`/subscribe?plan=${plan}`);
-        } else {
-          // No plan selected - redirect to subscribe page to choose plan
-          setLocation("/subscribe");
-        }
-      }, 100);
+      if (hasActiveSubscription) {
+        // User has paid - go to dashboard
+        toast({ 
+          title: 'Welcome back!', 
+          description: 'Redirecting to your dashboard...',
+        });
+        setTimeout(() => {
+          setLocation('/dashboard');
+        }, 100);
+      } else {
+        // User needs to subscribe - check if they selected a plan
+        const params = new URLSearchParams(window.location.search);
+        const plan = params.get('plan');
+        
+        toast({ 
+          title: `${isSignIn ? 'Welcome back!' : 'Account created successfully!'}`, 
+          description: plan ? 'Redirecting to checkout...' : 'Redirecting to choose your plan...',
+        });
+        
+        setTimeout(() => {
+          if (plan && (plan === 'monthly' || plan === 'annual')) {
+            setLocation(`/subscribe?plan=${plan}`);
+          } else {
+            setLocation('/subscribe');
+          }
+        }, 100);
+      }
     },
     onError: (error: Error) => {
       toast({ 
