@@ -1,0 +1,46 @@
+We need to make sure the live site consentiq.tech has the correct environment variables set so Stripe → Supabase → Auth works properly.
+
+Confirm diagnostic endpoint
+Already added in server/routes.ts:
+
+app.get("/api/env-check", (req, res) => {
+  res.json({
+    DATABASE_URL: process.env.DATABASE_URL ? "✅ SET" : "❌ MISSING",
+    JWT_SECRET: process.env.JWT_SECRET ? "✅ SET" : "❌ MISSING",
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY ? "✅ SET" : "❌ MISSING",
+    STRIPE_PRICE_ID: process.env.STRIPE_PRICE_ID ? "✅ SET" : "❌ MISSING",
+    STRIPE_ANNUAL_PRICE_ID: process.env.STRIPE_ANNUAL_PRICE_ID ? "✅ SET" : "❌ MISSING",
+    VITE_STRIPE_PUBLIC_KEY: process.env.VITE_STRIPE_PUBLIC_KEY ? "✅ SET" : "❌ MISSING",
+    SUPABASE_URL: process.env.SUPABASE_URL ? "✅ SET" : "❌ MISSING",
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ? "✅ SET" : "❌ MISSING",
+    FRONTEND_URL: process.env.FRONTEND_URL ? "✅ SET" : "❌ MISSING"
+  });
+});
+
+
+Visit diagnostic page
+After deploy:
+👉 https://www.consentiq.tech/api/env-check
+
+This shows ✅ or ❌ for each variable.
+
+Add these environment variables in Deployment → Secrets
+
+DATABASE_URL=postgresql://<db-user>:<db-pass>@<db-host>/<db-name>
+JWT_SECRET=b3fa6a6517f551047b36564d352f043a74b0765cbcbc47c815f03352caf1ac197f270d250ca302ab619241cfea6059d0f21ef462f619e9e667a0598999a1826c
+STRIPE_SECRET_KEY=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
+STRIPE_PRICE_ID=price_1SCvuYLFiSREHMWwZRRDvyjP
+STRIPE_ANNUAL_PRICE_ID=price_1SCw01LFiSREHMWw3W7XyDx5
+VITE_STRIPE_PUBLIC_KEY=pk_live_xxxxxxxxxxxxxxxxxxxxx
+SUPABASE_URL=https://<your-supabase-project>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJh...<full service role key>...
+FRONTEND_URL=https://www.consentiq.tech
+
+
+⚠️ Replace the placeholders (<db-user>, <db-pass>, <your-supabase-project>, <full service role key>, and Stripe publishable key) with your actual values.
+
+Redeploy once all are added.
+
+Verify
+Go back to https://www.consentiq.tech/api/env-check
+ — all lines should show ✅ SET.
