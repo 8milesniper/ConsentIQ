@@ -11,6 +11,7 @@
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
+    "@google-cloud/storage": "^7.17.1",
     "@google/genai": "^1.21.0",
     "@hookform/resolvers": "^3.10.0",
     "@jridgewell/trace-mapping": "^0.3.25",
@@ -50,6 +51,10 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.0.0",
     "@types/qrcode": "^1.5.5",
+    "@uppy/aws-s3": "^5.0.1",
+    "@uppy/core": "^5.0.2",
+    "@uppy/dashboard": "^5.0.2",
+    "@uppy/react": "^5.1.0",
     "bcryptjs": "^3.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

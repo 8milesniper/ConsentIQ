@@ -734,48 +734,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // DEVELOPMENT ONLY: Video blob upload endpoint (public access)
-  if (process.env.NODE_ENV === "development") {
-    app.post("/api/upload/:storageKey", async (req, res) => {
-      try {
-        // Handle raw video blob upload for consent recordings
-        const chunks: Buffer[] = [];
-        let totalSize = 0;
+  // Video blob upload endpoint with PERMANENT storage (public access for consent recording)
+  app.post("/api/upload/:storageKey", async (req, res) => {
+    try {
+      const chunks: Buffer[] = [];
+      let totalSize = 0;
+      
+      req.on('data', (chunk) => {
+        chunks.push(chunk);
+        totalSize += chunk.length;
+        // Limit upload size to 50MB
+        if (totalSize > 50 * 1024 * 1024) {
+          req.destroy();
+          res.status(413).json({ error: "File too large" });
+          return;
+        }
+      });
+      
+      req.on('end', () => {
+        const buffer = Buffer.concat(chunks);
+        const storageKey = req.params.storageKey;
         
-        req.on('data', (chunk) => {
-          chunks.push(chunk);
-          totalSize += chunk.length;
-          // Limit upload size to 50MB
-          if (totalSize > 50 * 1024 * 1024) {
-            req.destroy();
-            res.status(413).json({ error: "File too large" });
-            return;
-          }
+        // SAVE VIDEO TO PERMANENT STORAGE
+        const videoDir = '/home/runner/ConsentIQ/consent-videos';
+        if (!fs.existsSync(videoDir)) {
+          fs.mkdirSync(videoDir, { recursive: true });
+        }
+        
+        // Create filename from storage key (replace slashes with underscores)
+        const filename = storageKey.replace(/\//g, '_');
+        const filepath = `${videoDir}/${filename}`;
+        
+        // Write video to disk
+        fs.writeFileSync(filepath, buffer);
+        
+        console.log(`✅ VIDEO SAVED: ${filepath} (${buffer.length} bytes)`);
+        
+        res.json({ 
+          success: true, 
+          storageKey: req.params.storageKey,
+          size: buffer.length,
+          filepath: filepath
         });
-        
-        req.on('end', () => {
-          const buffer = Buffer.concat(chunks);
-          console.log(`Consent video upload: ${req.params.storageKey}, size: ${buffer.length} bytes`);
-          
-          // In production, save to cloud storage here
-          res.json({ 
-            success: true, 
-            storageKey: req.params.storageKey,
-            size: buffer.length 
-          });
-        });
-        
-        req.on('error', (error) => {
-          console.error('Upload stream error:', error);
-          res.status(500).json({ error: "Upload stream error" });
-        });
-        
-      } catch (error) {
-        console.error('Upload error:', error);
-        res.status(500).json({ error: "Upload failed" });
-      }
-    });
-  }
+      });
+      
+      req.on('error', (error) => {
+        console.error('Upload stream error:', error);
+        res.status(500).json({ error: "Upload stream error" });
+      });
+      
+    } catch (error) {
+      console.error('Upload error:', error);
+      res.status(500).json({ error: "Upload failed" });
+    }
+  });
 
   // Speech Processing & Verification Endpoints
   
@@ -836,7 +848,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Store ONLY the AI analysis result without corrupting verification state
       await storage.updateAiAnalysisResult(sessionId, analysisResult.decision);
 
-      // Clean up uploaded file
+      // SAVE VIDEO TO PERMANENT STORAGE FOR LEGAL RETRIEVAL
+      const videoDir = '/home/runner/ConsentIQ/consent-videos';
+      if (!fs.existsSync(videoDir)) {
+        fs.mkdirSync(videoDir, { recursive: true });
+      }
+      
+      const permanentFilename = videoAsset.storageKey.replace(/\//g, '_');
+      const permanentPath = `${videoDir}/${permanentFilename}`;
+      
+      // Copy video to permanent storage (don't delete original yet)
+      fs.copyFileSync(videoPath, permanentPath);
+      console.log(`✅ VIDEO SAVED TO PERMANENT STORAGE: ${permanentPath}`);
+
+      // Clean up temporary uploaded file
       fs.unlinkSync(videoPath);
 
       res.json({
@@ -930,6 +955,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Consent verification error:', error);
       res.status(500).json({ error: "Consent verification failed" });
+    }
+  });
+
+  // LEGAL VIDEO RETRIEVAL ENDPOINT - Secured with auth and subscription
+  app.get("/api/video/download/:sessionId", requireAuth, requireSubscription, async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      
+      // Get the consent session
+      const session = await storage.getConsentSession(sessionId);
+      if (!session) {
+        res.status(404).json({ error: "Consent session not found" });
+        return;
+      }
+      
+      // Verify the requesting user is the initiator (owner) of this session
+      if (session.initiatorUserId !== req.user!.id) {
+        res.status(403).json({ error: "Unauthorized: You can only access your own consent videos" });
+        return;
+      }
+      
+      // Get the video asset
+      if (!session.videoAssetId) {
+        res.status(404).json({ error: "No video associated with this consent session" });
+        return;
+      }
+      
+      const videoAsset = await storage.getVideoAsset(session.videoAssetId);
+      if (!videoAsset) {
+        res.status(404).json({ error: "Video asset not found in database" });
+        return;
+      }
+      
+      // Build filepath from storage key
+      const videoDir = '/home/runner/ConsentIQ/consent-videos';
+      const filename = videoAsset.storageKey.replace(/\//g, '_');
+      const filepath = `${videoDir}/${filename}`;
+      
+      // Check if video file exists
+      if (!fs.existsSync(filepath)) {
+        res.status(404).json({ 
+          error: "Video file not found on disk", 
+          details: "The video may have been deleted according to retention policy",
+          storageKey: videoAsset.storageKey
+        });
+        return;
+      }
+      
+      // Set appropriate headers for video download
+      res.setHeader('Content-Type', videoAsset.mimeType);
+      res.setHeader('Content-Disposition', `attachment; filename="${videoAsset.filename}"`);
+      res.setHeader('Content-Length', videoAsset.fileSize.toString());
+      
+      // Stream the video file
+      const fileStream = fs.createReadStream(filepath);
+      fileStream.pipe(res);
+      
+      console.log(`📥 Legal video retrieval: User ${req.user!.id} downloaded session ${sessionId} video ${videoAsset.id}`);
+      
+    } catch (error) {
+      console.error('Video download error:', error);
+      res.status(500).json({ error: "Failed to download video" });
+    }
+  });
+
+  // LEGAL DATA RETRIEVAL - Get full consent session data for legal purposes
+  app.get("/api/legal/consent-session/:sessionId", requireAuth, requireSubscription, async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      
+      const session = await storage.getConsentSession(sessionId);
+      if (!session) {
+        res.status(404).json({ error: "Consent session not found" });
+        return;
+      }
+      
+      // Verify the requesting user is the initiator (owner)
+      if (session.initiatorUserId !== req.user!.id) {
+        res.status(403).json({ error: "Unauthorized: You can only access your own consent sessions" });
+        return;
+      }
+      
+      // Get video asset if exists
+      let videoAsset = null;
+      if (session.videoAssetId) {
+        videoAsset = await storage.getVideoAsset(session.videoAssetId);
+      }
+      
+      res.json({
+        session,
+        videoAsset,
+        legalNote: "This data is legally binding consent verification record"
+      });
+      
+    } catch (error) {
+      console.error('Legal data retrieval error:', error);
+      res.status(500).json({ error: "Failed to retrieve legal data" });
     }
   });
 
