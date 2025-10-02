@@ -272,21 +272,29 @@ export const ConsentForm = (): JSX.Element => {
     setCurrentStep(3); // Move to completion step IMMEDIATELY to show loading spinner
     
     try {
-      // Step 1: Upload and create video asset
+      // Step 1: Create video asset record
       const baseMimeType = videoBlob.type.split(';')[0]; // Remove ;codecs=... part
       const fileExtension = baseMimeType === 'video/mp4' ? 'mp4' : 'webm';
       const filename = `consent-video-${Date.now()}.${fileExtension}`;
       
-      // Generate upload URL for video
-      const { uploadUrl, storageKey } = await generateUploadUrl(filename, baseMimeType);
+      // Create video asset record
+      const videoAsset = await createVideoAsset({
+        filename,
+        mimeType: baseMimeType,
+        fileSize: videoBlob.size,
+        storageKey: `session-${session.id}`,
+        isEncrypted: true,
+      });
       
-      // Upload video blob (mock upload for development)
-      const uploadResponse = await fetch(uploadUrl, {
+      // Upload video to Supabase using multipart form
+      const formData = new FormData();
+      formData.append('video', videoBlob, filename);
+      formData.append('sessionId', session.id);
+      formData.append('videoAssetId', videoAsset.id);
+
+      const uploadResponse = await fetch('/api/upload', {
         method: 'POST',
-        body: videoBlob,
-        headers: {
-          'Content-Type': videoBlob.type,
-        },
+        body: formData,
         credentials: 'include'
       });
 
@@ -294,26 +302,17 @@ export const ConsentForm = (): JSX.Element => {
         throw new Error('Video upload failed');
       }
 
-      // Create video asset record
-      const videoAsset = await createVideoAsset({
-        filename,
-        mimeType: baseMimeType,
-        fileSize: videoBlob.size,
-        storageKey,
-        isEncrypted: true,
-      });
-
       // Step 2: Process video with AI analysis
-      const formData = new FormData();
+      const aiFormData = new FormData();
       // Create a File object with the correct MIME type
       const videoFile = new File([videoBlob], filename, { type: baseMimeType });
-      formData.append('video', videoFile);
-      formData.append('sessionId', session.id);
-      formData.append('videoAssetId', videoAsset.id);
+      aiFormData.append('video', videoFile);
+      aiFormData.append('sessionId', session.id);
+      aiFormData.append('videoAssetId', videoAsset.id);
 
       const processResponse = await fetch('/api/consent/process-video', {
         method: 'POST',
-        body: formData,
+        body: aiFormData,
         credentials: 'include'
       });
 

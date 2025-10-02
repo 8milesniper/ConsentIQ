@@ -10,9 +10,10 @@ const supabase = createClient(
 );
 
 export async function uploadConsentVideo(fileBuffer: Buffer, filename: string): Promise<string> {
+  // Upload WITHOUT upsert to prevent overwriting existing videos
   const { data, error } = await supabase.storage
     .from('consent-videos')
-    .upload(filename, fileBuffer, { upsert: true });
+    .upload(filename, fileBuffer, { upsert: false });
   
   if (error) {
     console.error('Supabase video upload error:', error);

@@ -47,7 +47,13 @@ function getVideoStorageDir(): string {
   return videoDir;
 }
 
-// Set up multer for video file uploads
+// Set up multer for video file uploads (memory storage for Supabase)
+const memoryUpload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit
+});
+
+// Set up multer for disk storage (for AI processing)
 const upload = multer({ 
   dest: 'uploads/',
   limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit
@@ -771,59 +777,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Video blob upload endpoint with SUPABASE STORAGE (public access for consent recording)
-  app.post("/api/upload/:storageKey", async (req, res) => {
+  // Video upload endpoint with SUPABASE STORAGE
+  app.post("/api/upload", memoryUpload.single("video"), async (req, res) => {
     try {
-      const chunks: Buffer[] = [];
-      let totalSize = 0;
-      
-      req.on('data', (chunk) => {
-        chunks.push(chunk);
-        totalSize += chunk.length;
-        // Limit upload size to 50MB
-        if (totalSize > 50 * 1024 * 1024) {
-          req.destroy();
-          res.status(413).json({ error: "File too large" });
-          return;
-        }
+      if (!req.file) {
+        res.status(400).json({ error: "No video file provided" });
+        return;
+      }
+
+      const fileBuffer = req.file.buffer;
+      const sessionId = req.body.sessionId;
+      const videoAssetId = req.body.videoAssetId;
+
+      if (!sessionId || !videoAssetId) {
+        res.status(400).json({ error: "Session ID and Video Asset ID required" });
+        return;
+      }
+
+      // Upload to Supabase consent-videos bucket
+      const filename = `session-${sessionId}-${Date.now()}.webm`;
+      const supabasePath = await uploadConsentVideo(fileBuffer, filename);
+
+      console.log(`✅ VIDEO SAVED TO SUPABASE: ${supabasePath} (${fileBuffer.length} bytes)`);
+
+      // Update video asset with Supabase storage path
+      await storage.updateVideoAssetUrl(videoAssetId, supabasePath);
+      console.log(`✅ DATABASE UPDATED: Video asset ${videoAssetId} -> ${supabasePath}`);
+
+      // Return storage path (NOT public URL - this is a private bucket)
+      res.json({ 
+        success: true,
+        path: supabasePath,
+        size: fileBuffer.length
       });
-      
-      req.on('end', async () => {
-        try {
-          const buffer = Buffer.concat(chunks);
-          const storageKey = req.params.storageKey;
-          
-          // UPLOAD VIDEO TO SUPABASE STORAGE
-          const supabasePath = await uploadConsentVideo(buffer, storageKey);
-          
-          console.log(`✅ VIDEO SAVED TO SUPABASE: ${supabasePath} (${buffer.length} bytes)`);
-          
-          // Update video asset with Supabase storage path
-          const videoAssetId = storageKey.split('/')[1]?.split('-consent-')[0];
-          if (videoAssetId) {
-            await storage.updateVideoAssetUrl(videoAssetId, supabasePath);
-          }
-          
-          res.json({ 
-            success: true, 
-            storageKey: req.params.storageKey,
-            storageUrl: supabasePath,
-            size: buffer.length
-          });
-        } catch (error) {
-          console.error('Error uploading video to Supabase:', error);
-          res.status(500).json({ error: "Failed to save video" });
-        }
-      });
-      
-      req.on('error', (error) => {
-        console.error('Upload stream error:', error);
-        res.status(500).json({ error: "Upload stream error" });
-      });
-      
-    } catch (error) {
-      console.error('Upload error:', error);
-      res.status(500).json({ error: "Upload failed" });
+    } catch (err: any) {
+      console.error('Upload error:', err);
+      res.status(500).json({ error: err.message || "Upload failed" });
     }
   });
 
