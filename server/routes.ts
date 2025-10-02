@@ -149,6 +149,21 @@ if (!process.env.STRIPE_SECRET_KEY) {
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Diagnostic endpoint to check deployment environment variables
+  app.get("/api/env-check", (req, res) => {
+    res.json({
+      DATABASE_URL: process.env.DATABASE_URL ? "✅ SET" : "❌ MISSING",
+      JWT_SECRET: process.env.JWT_SECRET ? "✅ SET" : "❌ MISSING",
+      STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY ? "✅ SET" : "❌ MISSING",
+      STRIPE_PRICE_ID: process.env.STRIPE_PRICE_ID ? "✅ SET" : "❌ MISSING",
+      STRIPE_ANNUAL_PRICE_ID: process.env.STRIPE_ANNUAL_PRICE_ID ? "✅ SET" : "❌ MISSING",
+      VITE_STRIPE_PUBLIC_KEY: process.env.VITE_STRIPE_PUBLIC_KEY ? "✅ SET" : "❌ MISSING",
+      SUPABASE_URL: process.env.SUPABASE_URL ? "✅ SET" : "❌ MISSING",
+      SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ? "✅ SET" : "❌ MISSING",
+      FRONTEND_URL: process.env.FRONTEND_URL ? "✅ SET" : "❌ MISSING"
+    });
+  });
+
   // Logout endpoint
   app.post("/api/auth/logout", (req, res) => {
     res.clearCookie('auth_token', {
