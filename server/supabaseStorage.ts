@@ -19,11 +19,7 @@ export async function uploadConsentVideo(fileBuffer: Buffer, filename: string): 
     throw error;
   }
   
-  const { data: urlData } = supabase.storage
-    .from('consent-videos')
-    .getPublicUrl(data.path);
-  
-  return urlData.publicUrl;
+  return data.path;
 }
 
 export async function uploadProfilePicture(fileBuffer: Buffer, filename: string): Promise<string> {

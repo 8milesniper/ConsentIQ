@@ -794,20 +794,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const storageKey = req.params.storageKey;
           
           // UPLOAD VIDEO TO SUPABASE STORAGE
-          const supabaseUrl = await uploadConsentVideo(buffer, storageKey);
+          const supabasePath = await uploadConsentVideo(buffer, storageKey);
           
-          console.log(`✅ VIDEO SAVED TO SUPABASE: ${supabaseUrl} (${buffer.length} bytes)`);
+          console.log(`✅ VIDEO SAVED TO SUPABASE: ${supabasePath} (${buffer.length} bytes)`);
           
-          // Update video asset with Supabase URL
+          // Update video asset with Supabase storage path
           const videoAssetId = storageKey.split('/')[1]?.split('-consent-')[0];
           if (videoAssetId) {
-            await storage.updateVideoAssetUrl(videoAssetId, supabaseUrl);
+            await storage.updateVideoAssetUrl(videoAssetId, supabasePath);
           }
           
           res.json({ 
             success: true, 
             storageKey: req.params.storageKey,
-            storageUrl: supabaseUrl,
+            storageUrl: supabasePath,
             size: buffer.length
           });
         } catch (error) {
@@ -1023,7 +1023,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
       
-      // Build filepath from storage key
+      // Check if video is stored in Supabase (new videos)
+      if (videoAsset.storageUrl) {
+        try {
+          // Generate signed URL for private video (valid for 1 hour)
+          const signedUrl = await getSignedVideoUrl(videoAsset.storageUrl, 3600);
+          
+          console.log(`📥 Legal video retrieval: User ${authReq.user.userId} downloading session ${sessionId} video ${videoAsset.id} from Supabase`);
+          
+          // Return signed URL for client to download
+          res.json({
+            url: signedUrl,
+            filename: videoAsset.filename,
+            mimeType: videoAsset.mimeType,
+            size: videoAsset.fileSize
+          });
+          return;
+        } catch (error) {
+          console.error('Failed to generate signed URL:', error);
+          res.status(500).json({ error: "Failed to generate video access URL" });
+          return;
+        }
+      }
+      
+      // Fallback: video stored in local filesystem (old videos)
       const videoDir = getVideoStorageDir();
       const filename = videoAsset.storageKey.replace(/\//g, '_');
       const filepath = path.join(videoDir, filename);
@@ -1031,7 +1054,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if video file exists
       if (!fs.existsSync(filepath)) {
         res.status(404).json({ 
-          error: "Video file not found on disk", 
+          error: "Video file not found", 
           details: "The video may have been deleted according to retention policy",
           storageKey: videoAsset.storageKey
         });
@@ -1047,7 +1070,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fileStream = fs.createReadStream(filepath);
       fileStream.pipe(res);
       
-      console.log(`📥 Legal video retrieval: User ${authReq.user.userId} downloaded session ${sessionId} video ${videoAsset.id}`);
+      console.log(`📥 Legal video retrieval: User ${authReq.user.userId} downloaded session ${sessionId} video ${videoAsset.id} from local storage`);
       
     } catch (error) {
       console.error('Video download error:', error);
