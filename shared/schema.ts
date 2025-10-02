@@ -19,6 +19,7 @@ export const users = pgTable("users", {
   subscriptionPlan: text("subscription_plan"), // monthly, annual
   subscriptionEndDate: timestamp("subscription_end_date"), // when subscription ends/ended
   accountDeletionDate: timestamp("account_deletion_date"), // scheduled deletion date (7 days after cancellation)
+  role: text("role").notNull().default("user"), // user, admin
 });
 
 export const videoAssets = pgTable("video_assets", {
