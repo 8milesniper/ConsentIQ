@@ -794,15 +794,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
+      // Verify video asset exists before upload
+      const videoAsset = await storage.getVideoAsset(videoAssetId);
+      if (!videoAsset) {
+        res.status(404).json({ error: "Video asset not found" });
+        return;
+      }
+
       // Upload to Supabase consent-videos bucket
       const filename = `session-${sessionId}-${Date.now()}.webm`;
-      const supabasePath = await uploadConsentVideo(fileBuffer, filename);
-
-      console.log(`✅ VIDEO SAVED TO SUPABASE: ${supabasePath} (${fileBuffer.length} bytes)`);
+      let supabasePath;
+      
+      try {
+        supabasePath = await uploadConsentVideo(fileBuffer, filename);
+        console.log(`✅ VIDEO SAVED TO SUPABASE: ${supabasePath} (${fileBuffer.length} bytes)`);
+      } catch (uploadErr: any) {
+        console.error('Supabase upload failed:', uploadErr);
+        res.status(500).json({ 
+          error: "Failed to upload video to cloud storage",
+          details: uploadErr.message 
+        });
+        return;
+      }
 
       // Update video asset with Supabase storage path
-      await storage.updateVideoAssetUrl(videoAssetId, supabasePath);
-      console.log(`✅ DATABASE UPDATED: Video asset ${videoAssetId} -> ${supabasePath}`);
+      try {
+        await storage.updateVideoAssetUrl(videoAssetId, supabasePath);
+        console.log(`✅ DATABASE UPDATED: Video asset ${videoAssetId} -> ${supabasePath}`);
+      } catch (dbErr: any) {
+        console.error('Database update failed:', dbErr);
+        res.status(500).json({ 
+          error: "Video uploaded but database update failed",
+          details: dbErr.message 
+        });
+        return;
+      }
 
       // Return storage path (NOT public URL - this is a private bucket)
       res.json({ 

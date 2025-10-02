@@ -298,9 +298,13 @@ export const ConsentForm = (): JSX.Element => {
         credentials: 'include'
       });
 
+      const uploadResult = await uploadResponse.json();
+      
       if (!uploadResponse.ok) {
-        throw new Error('Video upload failed');
+        throw new Error(uploadResult.error || 'Video upload to cloud storage failed');
       }
+      
+      console.log('Upload success:', uploadResult);
 
       // Step 2: Process video with AI analysis
       const aiFormData = new FormData();
