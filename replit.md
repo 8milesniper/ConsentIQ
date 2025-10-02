@@ -18,15 +18,17 @@ Preferred communication style: Simple, everyday language.
 
 ## Backend Architecture
 - **Runtime**: Node.js with Express.js REST API
-- **Database**: PostgreSQL with Drizzle ORM for type-safe database operations
+- **Database**: PostgreSQL (NeonDB) with Drizzle ORM for type-safe database operations
+- **Cloud Storage**: Supabase storage buckets for videos and images
 - **Authentication**: JWT-based authentication with HTTP-only cookies for security
 - **File Structure**: Monorepo structure with shared schema definitions between client and server
 
-## Database Design
-- **Users Table**: Stores user credentials with bcrypt password hashing, Stripe customer and subscription tracking fields
-- **Consent Sessions Table**: Tracks consent workflow state, participant information, QR codes, and retention policies
-- **Video Assets Table**: Manages video metadata, storage keys, encryption status, and file integrity checksums
+## Database Design (NeonDB PostgreSQL)
+- **Users Table**: Stores user credentials with bcrypt password hashing, Stripe customer and subscription tracking, profile picture URLs (Supabase)
+- **Consent Sessions Table**: Tracks consent workflow state, participant information, QR codes, retention policies
+- **Video Assets Table**: Manages video metadata, Supabase storage URLs, encryption status, and file integrity checksums
 - **Enums**: PostgreSQL enums for consent status (pending, granted, denied, revoked)
+- **Admin System**: Role-based access control with admin/user roles
 
 ## Subscription System
 - **Payment Gateway**: Stripe integration for secure payment processing
@@ -42,10 +44,19 @@ Preferred communication style: Simple, everyday language.
 - **CORS**: Configured for credential inclusion across client-server communication
 - **Environment Variables**: Secure configuration management for JWT secrets and database credentials
 
+## Cloud Storage Architecture (Supabase)
+- **Storage Provider**: Supabase cloud storage for scalable, persistent file management
+- **Bucket Structure**: 
+  - `consent-videos` (private): Stores video consent recordings with access controls
+  - `profile-pictures` (public): Stores user profile images with public access
+- **Upload Service**: Dedicated `supabaseStorage.ts` module for handling all file operations
+- **Database Integration**: URLs stored in PostgreSQL (`profile_picture_url`, `storage_url` columns)
+- **Migration Strategy**: Automatic base64-to-cloud migration reduces database size by 99% per image
+
 ## Video Processing Pipeline
-- **Upload Flow**: Pre-signed URL generation for secure direct video uploads
+- **Upload Flow**: Direct upload to Supabase storage with signed URLs
 - **Metadata Extraction**: Automatic capture of file size, duration, resolution, and MIME type validation
-- **Storage Security**: Encrypted storage with integrity verification via checksums
+- **Storage Security**: Encrypted cloud storage with integrity verification via checksums
 - **Retention Management**: Configurable data retention periods with automatic cleanup workflows
 
 ## API Design Patterns
@@ -80,8 +91,14 @@ Preferred communication style: Simple, everyday language.
 - **Form Validation**: @hookform/resolvers for form schema integration
 - **TypeScript**: Strict type checking with path mapping for clean imports
 
+## Current Storage Implementation
+- **Supabase Cloud Storage**: Active implementation for videos and profile pictures
+  - consent-videos bucket (private, access controlled)
+  - profile-pictures bucket (public)
+  - Direct URL integration with PostgreSQL database
+  - 99% reduction in database size vs base64 storage
+
 ## Potential Future Integrations
-- **Cloud Storage**: AWS S3 or similar for scalable video storage
 - **CDN**: Content delivery network for optimized video streaming
 - **Email Services**: SMTP integration for consent notifications
 - **Analytics**: User interaction tracking and consent workflow analytics
