@@ -32,6 +32,20 @@ const verifyConsentSchema = z.object({
   videoAssetId: z.string(),
 });
 
+// Get the video storage directory (configurable for different environments)
+function getVideoStorageDir(): string {
+  // Use environment variable if set, otherwise use project-relative path
+  const videoDir = process.env.VIDEO_STORAGE_DIR || path.join(process.cwd(), 'consent-videos');
+  
+  // Ensure directory exists
+  if (!fs.existsSync(videoDir)) {
+    fs.mkdirSync(videoDir, { recursive: true });
+    console.log(`Created video storage directory: ${videoDir}`);
+  }
+  
+  return videoDir;
+}
+
 // Set up multer for video file uploads
 const upload = multer({ 
   dest: 'uploads/',
@@ -752,30 +766,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       req.on('end', () => {
-        const buffer = Buffer.concat(chunks);
-        const storageKey = req.params.storageKey;
-        
-        // SAVE VIDEO TO PERMANENT STORAGE
-        const videoDir = '/home/runner/ConsentIQ/consent-videos';
-        if (!fs.existsSync(videoDir)) {
-          fs.mkdirSync(videoDir, { recursive: true });
+        try {
+          const buffer = Buffer.concat(chunks);
+          const storageKey = req.params.storageKey;
+          
+          // SAVE VIDEO TO PERMANENT STORAGE
+          const videoDir = getVideoStorageDir();
+          
+          // Create filename from storage key (replace slashes with underscores)
+          const filename = storageKey.replace(/\//g, '_');
+          const filepath = path.join(videoDir, filename);
+          
+          // Write video to disk
+          fs.writeFileSync(filepath, buffer);
+          
+          console.log(`✅ VIDEO SAVED: ${filepath} (${buffer.length} bytes)`);
+          
+          res.json({ 
+            success: true, 
+            storageKey: req.params.storageKey,
+            size: buffer.length,
+            filepath: filepath
+          });
+        } catch (error) {
+          console.error('Error saving video:', error);
+          res.status(500).json({ error: "Failed to save video" });
         }
-        
-        // Create filename from storage key (replace slashes with underscores)
-        const filename = storageKey.replace(/\//g, '_');
-        const filepath = `${videoDir}/${filename}`;
-        
-        // Write video to disk
-        fs.writeFileSync(filepath, buffer);
-        
-        console.log(`✅ VIDEO SAVED: ${filepath} (${buffer.length} bytes)`);
-        
-        res.json({ 
-          success: true, 
-          storageKey: req.params.storageKey,
-          size: buffer.length,
-          filepath: filepath
-        });
       });
       
       req.on('error', (error) => {
@@ -849,13 +865,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.updateAiAnalysisResult(sessionId, analysisResult.decision);
 
       // SAVE VIDEO TO PERMANENT STORAGE FOR LEGAL RETRIEVAL
-      const videoDir = '/home/runner/ConsentIQ/consent-videos';
-      if (!fs.existsSync(videoDir)) {
-        fs.mkdirSync(videoDir, { recursive: true });
-      }
-      
+      const videoDir = getVideoStorageDir();
       const permanentFilename = videoAsset.storageKey.replace(/\//g, '_');
-      const permanentPath = `${videoDir}/${permanentFilename}`;
+      const permanentPath = path.join(videoDir, permanentFilename);
       
       // Copy video to permanent storage (don't delete original yet)
       fs.copyFileSync(videoPath, permanentPath);
@@ -961,6 +973,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // LEGAL VIDEO RETRIEVAL ENDPOINT - Secured with auth and subscription
   app.get("/api/video/download/:sessionId", requireAuth, requireSubscription, async (req, res) => {
     try {
+      const authReq = req as AuthenticatedRequest;
       const { sessionId } = req.params;
       
       // Get the consent session
@@ -971,7 +984,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verify the requesting user is the initiator (owner) of this session
-      if (session.initiatorUserId !== req.user!.id) {
+      if (session.initiatorUserId !== authReq.user.userId) {
         res.status(403).json({ error: "Unauthorized: You can only access your own consent videos" });
         return;
       }
@@ -989,9 +1002,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Build filepath from storage key
-      const videoDir = '/home/runner/ConsentIQ/consent-videos';
+      const videoDir = getVideoStorageDir();
       const filename = videoAsset.storageKey.replace(/\//g, '_');
-      const filepath = `${videoDir}/${filename}`;
+      const filepath = path.join(videoDir, filename);
       
       // Check if video file exists
       if (!fs.existsSync(filepath)) {
@@ -1012,7 +1025,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fileStream = fs.createReadStream(filepath);
       fileStream.pipe(res);
       
-      console.log(`📥 Legal video retrieval: User ${req.user!.id} downloaded session ${sessionId} video ${videoAsset.id}`);
+      console.log(`📥 Legal video retrieval: User ${authReq.user.userId} downloaded session ${sessionId} video ${videoAsset.id}`);
       
     } catch (error) {
       console.error('Video download error:', error);
@@ -1023,6 +1036,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // LEGAL DATA RETRIEVAL - Get full consent session data for legal purposes
   app.get("/api/legal/consent-session/:sessionId", requireAuth, requireSubscription, async (req, res) => {
     try {
+      const authReq = req as AuthenticatedRequest;
       const { sessionId } = req.params;
       
       const session = await storage.getConsentSession(sessionId);
@@ -1032,7 +1046,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verify the requesting user is the initiator (owner)
-      if (session.initiatorUserId !== req.user!.id) {
+      if (session.initiatorUserId !== authReq.user.userId) {
         res.status(403).json({ error: "Unauthorized: You can only access your own consent sessions" });
         return;
       }
