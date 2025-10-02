@@ -571,6 +571,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // Update status to active when payment succeeds
             if (subscription.metadata?.userId) {
+              console.log(`✅ Updating user ${subscription.metadata.userId} to status: ${subscription.status}`);
               await storage.updateUserSubscriptionStatus(subscription.metadata.userId, subscription.status);
               
               // If subscription is active, clear any scheduled deletion
@@ -581,6 +582,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   null as any  // Clear subscription end date
                 );
               }
+            } else {
+              console.error('❌ No userId found in subscription metadata for invoice.payment_succeeded');
+              console.error('Subscription ID:', subscription.id);
+              console.error('Customer ID:', subscription.customer);
             }
           }
           break;
@@ -590,6 +595,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Update user's subscription status
           if (updatedSubscription.metadata?.userId) {
+            console.log(`✅ Updating user ${updatedSubscription.metadata.userId} to status: ${updatedSubscription.status}`);
             await storage.updateUserSubscriptionStatus(updatedSubscription.metadata.userId, updatedSubscription.status);
             
             // Handle different subscription states
