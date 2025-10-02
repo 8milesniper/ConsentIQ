@@ -11,6 +11,7 @@ import multer from "multer";
 import * as fs from "fs";
 import * as path from "path";
 import Stripe from "stripe";
+import { uploadConsentVideo, uploadProfilePicture, getSignedVideoUrl } from "./supabaseStorage";
 
 // Extend Express Request type to include user
 interface AuthenticatedRequest extends Request {
@@ -179,6 +180,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         profilePicture
       });
 
+      // Upload profile picture to Supabase if provided
+      let profilePictureUrl = null;
+      if (profilePicture && profilePicture.startsWith('data:image')) {
+        try {
+          // Extract base64 data from data URI
+          const base64Data = profilePicture.split(',')[1];
+          const buffer = Buffer.from(base64Data, 'base64');
+          const filename = `${user.id}-${Date.now()}.jpg`;
+          
+          // Upload to Supabase
+          profilePictureUrl = await uploadProfilePicture(buffer, filename);
+          
+          // Update user with Supabase URL
+          await storage.updateUserProfilePictureUrl(user.id, profilePictureUrl);
+          
+          console.log(`✅ PROFILE PICTURE SAVED TO SUPABASE: ${profilePictureUrl}`);
+        } catch (uploadError) {
+          console.error('Profile picture upload to Supabase failed:', uploadError);
+          // Continue registration even if upload fails
+        }
+      }
+
       // Generate JWT token
       const token = jwt.sign(
         { userId: user.id, username: user.username },
@@ -202,7 +225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           username: user.username,
           fullName: user.fullName,
           phoneNumber: user.phoneNumber,
-          profilePicture: user.profilePicture,
+          profilePicture: profilePictureUrl || user.profilePicture,
           stripeCustomerId: user.stripeCustomerId,
           stripeSubscriptionId: user.stripeSubscriptionId,
           subscriptionStatus: user.subscriptionStatus,
@@ -748,7 +771,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Video blob upload endpoint with PERMANENT storage (public access for consent recording)
+  // Video blob upload endpoint with SUPABASE STORAGE (public access for consent recording)
   app.post("/api/upload/:storageKey", async (req, res) => {
     try {
       const chunks: Buffer[] = [];
@@ -765,31 +788,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
       
-      req.on('end', () => {
+      req.on('end', async () => {
         try {
           const buffer = Buffer.concat(chunks);
           const storageKey = req.params.storageKey;
           
-          // SAVE VIDEO TO PERMANENT STORAGE
-          const videoDir = getVideoStorageDir();
+          // UPLOAD VIDEO TO SUPABASE STORAGE
+          const supabaseUrl = await uploadConsentVideo(buffer, storageKey);
           
-          // Create filename from storage key (replace slashes with underscores)
-          const filename = storageKey.replace(/\//g, '_');
-          const filepath = path.join(videoDir, filename);
+          console.log(`✅ VIDEO SAVED TO SUPABASE: ${supabaseUrl} (${buffer.length} bytes)`);
           
-          // Write video to disk
-          fs.writeFileSync(filepath, buffer);
-          
-          console.log(`✅ VIDEO SAVED: ${filepath} (${buffer.length} bytes)`);
+          // Update video asset with Supabase URL
+          const videoAssetId = storageKey.split('/')[1]?.split('-consent-')[0];
+          if (videoAssetId) {
+            await storage.updateVideoAssetUrl(videoAssetId, supabaseUrl);
+          }
           
           res.json({ 
             success: true, 
             storageKey: req.params.storageKey,
-            size: buffer.length,
-            filepath: filepath
+            storageUrl: supabaseUrl,
+            size: buffer.length
           });
         } catch (error) {
-          console.error('Error saving video:', error);
+          console.error('Error uploading video to Supabase:', error);
           res.status(500).json({ error: "Failed to save video" });
         }
       });

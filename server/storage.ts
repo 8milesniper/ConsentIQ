@@ -12,6 +12,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUserProfilePictureUrl(userId: string, profilePictureUrl: string): Promise<User | undefined>;
   updateUserStripeInfo(userId: string, stripeCustomerId: string, stripeSubscriptionId: string, subscriptionPlan: string, subscriptionStatus: string): Promise<User | undefined>;
   updateUserSubscriptionStatus(userId: string, status: string): Promise<User | undefined>;
   scheduleAccountDeletion(userId: string, deletionDate: Date, subscriptionEndDate: Date): Promise<User | undefined>;
@@ -30,6 +31,7 @@ export interface IStorage {
   createVideoAsset(asset: InsertVideoAsset): Promise<VideoAsset>;
   getVideoAsset(id: string): Promise<VideoAsset | undefined>;
   updateVideoTranscript(id: string, transcript: string, confidence: number): Promise<VideoAsset | undefined>;
+  updateVideoAssetUrl(id: string, storageUrl: string): Promise<VideoAsset | undefined>;
   
   // Upload URL generation (for secure video uploads)
   generateUploadUrl(filename: string, mimeType: string): Promise<{ uploadUrl: string; storageKey: string }>;
@@ -64,15 +66,29 @@ export class MemStorage implements IStorage {
       fullName: insertUser.fullName || null,
       phoneNumber: insertUser.phoneNumber || null,
       profilePicture: insertUser.profilePicture || null,
+      profilePictureUrl: null,
       stripeCustomerId: null,
       stripeSubscriptionId: null,
       subscriptionStatus: null,
       subscriptionPlan: null,
       subscriptionEndDate: null,
       accountDeletionDate: null,
+      role: 'user',
     };
     this.users.set(id, user);
     return user;
+  }
+
+  async updateUserProfilePictureUrl(userId: string, profilePictureUrl: string): Promise<User | undefined> {
+    const user = this.users.get(userId);
+    if (!user) return undefined;
+    
+    const updatedUser = {
+      ...user,
+      profilePictureUrl,
+    };
+    this.users.set(userId, updatedUser);
+    return updatedUser;
   }
 
   async updateUserStripeInfo(userId: string, stripeCustomerId: string, stripeSubscriptionId: string, subscriptionPlan: string, subscriptionStatus: string): Promise<User | undefined> {
@@ -246,6 +262,7 @@ export class MemStorage implements IStorage {
       duration: insertAsset.duration || null,
       resolution: insertAsset.resolution || null,
       storageKey: insertAsset.storageKey,
+      storageUrl: null,
       isEncrypted: insertAsset.isEncrypted !== undefined ? insertAsset.isEncrypted : true,
       checksum: insertAsset.checksum || null,
       uploadedAt: new Date(),
@@ -271,6 +288,19 @@ export class MemStorage implements IStorage {
       transcript,
       transcriptionConfidence: confidence,
       transcribedAt: new Date(),
+    };
+
+    this.videoAssets.set(id, updatedAsset);
+    return updatedAsset;
+  }
+
+  async updateVideoAssetUrl(id: string, storageUrl: string): Promise<VideoAsset | undefined> {
+    const videoAsset = this.videoAssets.get(id);
+    if (!videoAsset) return undefined;
+
+    const updatedAsset: VideoAsset = {
+      ...videoAsset,
+      storageUrl,
     };
 
     this.videoAssets.set(id, updatedAsset);
@@ -348,6 +378,15 @@ export class PostgresStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const result = await this.db.insert(users).values([insertUser]).returning();
+    return result[0];
+  }
+
+  async updateUserProfilePictureUrl(userId: string, profilePictureUrl: string): Promise<User | undefined> {
+    const result = await this.db
+      .update(users)
+      .set({ profilePictureUrl })
+      .where(eq(users.id, userId))
+      .returning();
     return result[0];
   }
 
@@ -501,6 +540,16 @@ export class PostgresStorage implements IStorage {
         transcript,
         transcriptionConfidence: confidence,
         transcribedAt: new Date(),
+      })
+      .where(eq(videoAssets.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async updateVideoAssetUrl(id: string, storageUrl: string): Promise<VideoAsset | undefined> {
+    const result = await this.db.update(videoAssets)
+      .set({
+        storageUrl,
       })
       .where(eq(videoAssets.id, id))
       .returning();
