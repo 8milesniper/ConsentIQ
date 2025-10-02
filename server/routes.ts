@@ -1026,22 +1026,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if video is stored in Supabase (new videos)
       if (videoAsset.storageUrl) {
         try {
-          // Generate signed URL for private video (valid for 1 hour)
-          const signedUrl = await getSignedVideoUrl(videoAsset.storageUrl, 3600);
+          // Generate signed URL for private video (short TTL - 5 minutes for proxy streaming)
+          const signedUrl = await getSignedVideoUrl(videoAsset.storageUrl, 300);
           
           console.log(`📥 Legal video retrieval: User ${authReq.user.userId} downloading session ${sessionId} video ${videoAsset.id} from Supabase`);
           
-          // Return signed URL for client to download
-          res.json({
-            url: signedUrl,
-            filename: videoAsset.filename,
-            mimeType: videoAsset.mimeType,
-            size: videoAsset.fileSize
-          });
+          // Proxy stream from Supabase to client (keeps signed URL private)
+          const response = await fetch(signedUrl);
+          
+          if (!response.ok || !response.body) {
+            throw new Error(`Supabase fetch failed: ${response.statusText}`);
+          }
+          
+          // Set appropriate headers for video streaming
+          res.setHeader('Content-Type', videoAsset.mimeType || 'video/webm');
+          res.setHeader('Content-Disposition', `attachment; filename="${videoAsset.filename}"`);
+          if (videoAsset.fileSize) {
+            res.setHeader('Content-Length', videoAsset.fileSize.toString());
+          }
+          
+          // Convert web stream to Node.js stream and pipe to client
+          const { Readable } = await import('stream');
+          const nodeStream = Readable.fromWeb(response.body as any);
+          nodeStream.pipe(res);
           return;
         } catch (error) {
-          console.error('Failed to generate signed URL:', error);
-          res.status(500).json({ error: "Failed to generate video access URL" });
+          console.error('Failed to proxy video from Supabase:', error);
+          res.status(500).json({ error: "Failed to retrieve video" });
           return;
         }
       }
