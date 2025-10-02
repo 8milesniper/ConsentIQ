@@ -416,55 +416,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      // Create or get Stripe customer
-      let customerId = user.stripeCustomerId;
-      if (!customerId) {
-        const customer = await stripe.customers.create({
-          metadata: {
-            userId: user.id,
-            username: user.username
-          }
-        });
-        customerId = customer.id;
-      }
-
       // Create Checkout Session for subscription
-      const baseUrl = process.env.NODE_ENV === 'production' 
-        ? 'https://www.consentiq.tech'
-        : `${req.protocol}://${req.get('host')}`;
+      const baseUrl = process.env.FRONTEND_URL || 
+        (process.env.NODE_ENV === 'production' 
+          ? 'https://www.consentiq.tech'
+          : `${req.protocol}://${req.get('host')}`);
         
       const session = await stripe.checkout.sessions.create({
-        customer: customerId,
-        payment_method_types: ['card'],
-        line_items: [{
-          price: priceId,
-          quantity: 1,
-        }],
-        mode: 'subscription',
-        success_url: `${baseUrl}/dashboard?payment_success=1`,
-        cancel_url: `${baseUrl}/subscribe?plan=${plan}`,
-        metadata: {
-          userId: user.id,
-          plan: plan || 'monthly',
-        },
+        mode: "subscription",
+        line_items: [
+          { price: priceId, quantity: 1 }
+        ],
+        success_url: `${baseUrl}/dashboard`,
+        cancel_url: `${baseUrl}/subscribe`,
+        customer_email: user.username, // username is the email
         subscription_data: {
           metadata: {
             userId: user.id,
-            plan: plan || 'monthly',
+            plan: plan || 'monthly'
           },
         },
+        metadata: {
+          userId: user.id
+        }
       });
-
-      // Save the customer ID if it's new
-      if (customerId !== user.stripeCustomerId) {
-        await storage.updateUserStripeInfo(
-          user.id,
-          customerId,
-          null as any,
-          null as any,
-          'incomplete'
-        );
-      }
 
       res.json({
         sessionId: session.id,
