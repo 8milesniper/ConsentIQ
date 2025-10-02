@@ -12,7 +12,8 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   fullName: text("full_name"),
   phoneNumber: text("phone_number"), 
-  profilePicture: text("profile_picture"), // Base64 encoded image data
+  profilePicture: text("profile_picture"), // Base64 encoded image data (deprecated - use profilePictureUrl)
+  profilePictureUrl: text("profile_picture_url"), // Supabase storage URL
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
   subscriptionStatus: text("subscription_status"), // active, canceled, past_due, etc.
@@ -30,7 +31,8 @@ export const videoAssets = pgTable("video_assets", {
   fileSize: integer("file_size").notNull(),
   duration: integer("duration"), // in seconds
   resolution: text("resolution"), // e.g., "1280x720"
-  storageKey: text("storage_key").notNull(), // key in object storage
+  storageKey: text("storage_key").notNull(), // key in object storage (local path - deprecated)
+  storageUrl: text("storage_url"), // Supabase storage URL
   uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
   isEncrypted: boolean("is_encrypted").notNull().default(true),
   checksum: text("checksum"), // for integrity verification
