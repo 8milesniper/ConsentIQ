@@ -447,6 +447,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userId: user.id,
           plan: plan || 'monthly',
         },
+        subscription_data: {
+          metadata: {
+            userId: user.id,
+            plan: plan || 'monthly',
+          },
+        },
       });
 
       // Save the customer ID if it's new
