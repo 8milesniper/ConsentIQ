@@ -13,6 +13,30 @@ import { setupVite, serveStatic, log } from "./vite";
 import cookieParser from "cookie-parser";
 
 const app = express();
+
+// Environment check endpoint (for debugging deployment issues)
+app.get('/api/env-check', (req, res) => {
+  const requiredEnvVars = [
+    'DATABASE_URL',
+    'JWT_SECRET', 
+    'STRIPE_SECRET_KEY',
+    'STRIPE_PRICE_ID',
+    'SUPABASE_URL',
+    'SUPABASE_SERVICE_ROLE_KEY'
+  ];
+  
+  const envStatus = requiredEnvVars.reduce((acc, key) => {
+    acc[key] = process.env[key] ? '✅ SET' : '❌ MISSING';
+    return acc;
+  }, {} as Record<string, string>);
+  
+  res.json({
+    environment: process.env.REPLIT_DEPLOYMENT === '1' ? 'PRODUCTION' : 'DEVELOPMENT',
+    envVars: envStatus,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // CORS configuration for cookie-based authentication
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', req.headers.origin);
