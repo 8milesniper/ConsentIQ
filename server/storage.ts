@@ -1,7 +1,7 @@
 import { type User, type SafeUser, type InsertUser, type ConsentSession, type InsertConsentSession, type VideoAsset, type InsertVideoAsset, users, consentSessions, videoAssets } from "@shared/schema";
 import { randomUUID } from "crypto";
-import { drizzle } from "drizzle-orm/neon-http";
-import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { eq } from "drizzle-orm";
 
 // modify the interface with any CRUD methods
@@ -362,7 +362,7 @@ export class PostgresStorage implements IStorage {
     if (!process.env.DATABASE_URL) {
       throw new Error("DATABASE_URL environment variable is required");
     }
-    const sql = neon(process.env.DATABASE_URL);
+    const sql = postgres(process.env.DATABASE_URL);
     this.db = drizzle(sql);
   }
 
