@@ -32,16 +32,8 @@ export const AuthScreen = (): JSX.Element => {
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isSignIn, setIsSignIn] = useState(false);
 
-  // Redirect already-authenticated users based on subscription status
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      if (user.subscriptionStatus === 'active') {
-        setLocation('/dashboard');
-      } else {
-        setLocation('/subscribe');
-      }
-    }
-  }, [isAuthenticated, user, setLocation]);
+  // Don't auto-redirect - let users see the auth form
+  // Redirection happens AFTER successful login/registration
 
   const form = useForm<CreateAccountData | SignInData>({
     resolver: zodResolver(isSignIn ? signInSchema : createAccountSchema),
