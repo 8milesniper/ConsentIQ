@@ -416,8 +416,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         line_items: [
           { price: priceId, quantity: 1 }
         ],
-        success_url: `${baseUrl}/dashboard`,
-        cancel_url: `${baseUrl}/subscribe`,
+        success_url: `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${baseUrl}/cancel`,
         customer_email: user.username, // username is the email
         subscription_data: {
           metadata: {
