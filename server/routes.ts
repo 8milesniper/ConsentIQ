@@ -169,13 +169,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/test-supabase", async (req, res) => {
     try {
       const testUser = await storage.getUserByUsername("test-connection@test.com");
-      res.json({ success: true, message: "Supabase connected", userFound: !!testUser });
+      res.json({ 
+        success: true, 
+        message: "Supabase connected", 
+        userFound: !!testUser,
+        supabaseUrl: process.env.SUPABASE_URL
+      });
     } catch (error: any) {
       res.status(500).json({ 
         success: false, 
         error: error.message,
         details: error.toString(),
-        supabaseUrl: process.env.SUPABASE_URL?.substring(0, 40) + '...'
+        supabaseUrl: process.env.SUPABASE_URL
       });
     }
   });
