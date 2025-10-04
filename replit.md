@@ -6,6 +6,11 @@ ConsentIQ is a full-stack web application designed for managing video consent wo
 
 Preferred communication style: Simple, everyday language.
 
+## Login & Navigation Flow
+- **ALL users** (new and returning) redirect to `/consent/new` after successful login - they're logging in to use the app
+- Payment success flow: Stripe checkout → /success → subscription webhook activates → auto-redirect to /consent/new
+- Session persistence: HTTP-only cookies automatically restore sessions on page reload
+
 # System Architecture
 
 ## Frontend Architecture

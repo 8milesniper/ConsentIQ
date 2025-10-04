@@ -96,13 +96,13 @@ export const AuthScreen = (): JSX.Element => {
       const hasActiveSubscription = data.user.subscriptionStatus === 'active';
       
       if (hasActiveSubscription) {
-        // Existing user with subscription - go to dashboard
+        // Existing user with subscription - go straight to creating consent
         toast({ 
           title: 'Welcome back!', 
-          description: 'Redirecting to your dashboard...',
+          description: 'Ready to create a consent session...',
         });
         setTimeout(() => {
-          setLocation('/dashboard');
+          setLocation('/consent/new');
         }, 100);
       } else {
         // New user or unpaid user - must subscribe first
