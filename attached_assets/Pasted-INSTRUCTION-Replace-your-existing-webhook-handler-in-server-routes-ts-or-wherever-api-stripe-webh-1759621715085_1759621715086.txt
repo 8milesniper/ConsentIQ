@@ -1,0 +1,68 @@
+INSTRUCTION:
+Replace your existing webhook handler in server/routes.ts (or wherever /api/stripe/webhook is defined) with the code below.
+This ensures that Stripe automatically updates the user’s subscription status in Supabase after payment.
+
+CODE:
+
+import express from "express";
+import Stripe from "stripe";
+import { createClient } from "@supabase/supabase-js";
+
+const router = express.Router();
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2022-11-15",
+});
+
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+router.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async (req, res) => {
+  const sig = req.headers["stripe-signature"];
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      sig!,
+      process.env.STRIPE_WEBHOOK_SECRET!
+    );
+  } catch (err: any) {
+    console.error("⚠️ Webhook signature verification failed:", err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // ✅ Handle successful payment
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
+
+    try {
+      const { error } = await supabase
+        .from("users")
+        .update({
+          subscription_status: "active",
+          stripe_customer_id: session.customer,
+          stripe_subscription_id: session.subscription,
+          subscription_plan: session.metadata?.plan || "monthly",
+          subscription_end_date: new Date((session.expires_at || Date.now()) * 1000),
+        })
+        .eq("email", session.customer_email);
+
+      if (error) {
+        console.error("Supabase update failed:", error.message);
+        return res.status(500).send("Database update failed");
+      }
+
+      console.log(`✅ Subscription activated for ${session.customer_email}`);
+      return res.status(200).send({ received: true });
+    } catch (err: any) {
+      console.error("Error updating user:", err.message);
+      return res.status(500).send("Internal server error");
+    }
+  }
+
+  res.status(200).send({ received: true });
+});
+
+export default router;
