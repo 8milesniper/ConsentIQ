@@ -189,93 +189,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register new user
   app.post("/api/auth/register", async (req, res) => {
     try {
-      const validatedData = insertUserSchema.parse(req.body);
-      const { username, password, fullName, phoneNumber, profilePicture } = validatedData;
+      const { username, password, fullName, phoneNumber } = req.body;
 
-      // Check if user already exists
-      const existingUser = await storage.getUserByUsername(username);
-      if (existingUser) {
-        res.status(409).json({ error: "Username already exists" });
-        return;
-      }
+      const supabaseClient = createClient(
+        process.env.SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
 
-      // Hash password
       const hashedPassword = await bcrypt.hash(password, 12);
-      
-      // Create user with all profile data
-      const user = await storage.createUser({ 
-        username, 
-        password: hashedPassword,
-        fullName,
-        phoneNumber,
-        profilePicture
-      });
 
-      // Upload profile picture to Supabase if provided
-      let profilePictureUrl = null;
-      if (profilePicture && profilePicture.startsWith('data:image')) {
-        try {
-          // Extract base64 data from data URI
-          const base64Data = profilePicture.split(',')[1];
-          const buffer = Buffer.from(base64Data, 'base64');
-          const filename = `${user.id}-${Date.now()}.jpg`;
-          
-          // Upload to Supabase
-          profilePictureUrl = await uploadProfilePicture(buffer, filename);
-          
-          // Update user with Supabase URL
-          await storage.updateUserProfilePictureUrl(user.id, profilePictureUrl);
-          
-          console.log(`✅ PROFILE PICTURE SAVED TO SUPABASE: ${profilePictureUrl}`);
-        } catch (uploadError) {
-          console.error('Profile picture upload to Supabase failed:', uploadError);
-          // Continue registration even if upload fails
-        }
+      const { data, error } = await supabaseClient
+        .from("users")
+        .insert([
+          {
+            id: randomUUID(),
+            username: username,
+            password: hashedPassword,
+            full_name: fullName,
+            phone_number: phoneNumber
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Supabase insert error:", error.message);
+        return res.status(400).json({ error: error.message });
       }
 
-      // Generate JWT token
       const token = jwt.sign(
-        { userId: user.id, username: user.username },
+        { userId: data.id, username: data.username },
         SECRET,
         { expiresIn: "7d" }
       );
 
-      // Set secure HTTP-only cookie instead of sending token in response
-      // No subdomains, so sameSite: 'lax' works fine
       res.cookie('auth_token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        maxAge: 7 * 24 * 60 * 60 * 1000,
         path: '/',
       });
 
-      res.status(201).json({ 
-        user: {
-          id: user.id,
-          username: user.username,
-          fullName: user.fullName,
-          phoneNumber: user.phoneNumber,
-          profilePicture: profilePictureUrl || user.profilePicture,
-          stripeCustomerId: user.stripeCustomerId,
-          stripeSubscriptionId: user.stripeSubscriptionId,
-          subscriptionStatus: user.subscriptionStatus,
-          subscriptionPlan: user.subscriptionPlan,
-          subscriptionEndDate: user.subscriptionEndDate,
-          accountDeletionDate: user.accountDeletionDate
-        }
-      });
-    } catch (error: any) {
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid registration data", details: error.errors });
-      } else {
-        console.error('Registration error:', error);
-        res.status(500).json({ 
-          error: "Registration failed",
-          message: error.message,
-          details: error.toString()
-        });
-      }
+      res.status(201).json({ success: true, user: data });
+    } catch (err: any) {
+      console.error("Signup handler error:", err);
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 
