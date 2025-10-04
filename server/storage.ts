@@ -1,8 +1,11 @@
-import { type User, type SafeUser, type InsertUser, type ConsentSession, type InsertConsentSession, type VideoAsset, type InsertVideoAsset, users, consentSessions, videoAssets } from "@shared/schema";
+import { type User, type SafeUser, type InsertUser, type ConsentSession, type InsertConsentSession, type VideoAsset, type InsertVideoAsset } from "@shared/schema";
 import { randomUUID } from "crypto";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-import { eq } from "drizzle-orm";
+import { createClient } from "@supabase/supabase-js";
+
+export const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 // modify the interface with any CRUD methods
 // you might need
@@ -354,93 +357,127 @@ export class MemStorage implements IStorage {
   }
 }
 
-// PostgreSQL Storage Implementation
+// Supabase Storage Implementation
 export class PostgresStorage implements IStorage {
-  private db: ReturnType<typeof drizzle>;
-
   constructor() {
-    if (!process.env.DATABASE_URL) {
-      throw new Error("DATABASE_URL environment variable is required");
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables are required");
     }
-    const sql = postgres(process.env.DATABASE_URL);
-    this.db = drizzle(sql);
   }
 
   async getUser(id: string): Promise<User | undefined> {
-    const result = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
-    return result[0];
+    const { data, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", id)
+      .single();
+    
+    if (error) return undefined;
+    return data as User;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const result = await this.db.select().from(users).where(eq(users.username, username)).limit(1);
-    return result[0];
+    const { data, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("username", username)
+      .single();
+    
+    if (error) return undefined;
+    return data as User;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const result = await this.db.insert(users).values([insertUser]).returning();
-    return result[0];
+    const { data, error } = await supabase
+      .from("users")
+      .insert([insertUser])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data as User;
   }
 
   async updateUserProfilePictureUrl(userId: string, profilePictureUrl: string): Promise<User | undefined> {
-    const result = await this.db
-      .update(users)
-      .set({ profilePictureUrl })
-      .where(eq(users.id, userId))
-      .returning();
-    return result[0];
+    const { data, error } = await supabase
+      .from("users")
+      .update({ profile_picture_url: profilePictureUrl })
+      .eq("id", userId)
+      .select()
+      .single();
+    
+    if (error) return undefined;
+    return data as User;
   }
 
   async updateUserStripeInfo(userId: string, stripeCustomerId: string, stripeSubscriptionId: string, subscriptionPlan: string, subscriptionStatus: string): Promise<User | undefined> {
-    const result = await this.db
-      .update(users)
-      .set({ 
-        stripeCustomerId, 
-        stripeSubscriptionId,
-        subscriptionPlan,
-        subscriptionStatus
+    const { data, error } = await supabase
+      .from("users")
+      .update({ 
+        stripe_customer_id: stripeCustomerId, 
+        stripe_subscription_id: stripeSubscriptionId,
+        subscription_plan: subscriptionPlan,
+        subscription_status: subscriptionStatus
       })
-      .where(eq(users.id, userId))
-      .returning();
-    return result[0];
+      .eq("id", userId)
+      .select()
+      .single();
+    
+    if (error) return undefined;
+    return data as User;
   }
 
   async updateUserSubscriptionStatus(userId: string, status: string): Promise<User | undefined> {
-    const result = await this.db
-      .update(users)
-      .set({ subscriptionStatus: status })
-      .where(eq(users.id, userId))
-      .returning();
-    return result[0];
+    const { data, error } = await supabase
+      .from("users")
+      .update({ subscription_status: status })
+      .eq("id", userId)
+      .select()
+      .single();
+    
+    if (error) return undefined;
+    return data as User;
   }
 
   async scheduleAccountDeletion(userId: string, deletionDate: Date, subscriptionEndDate: Date): Promise<User | undefined> {
-    const result = await this.db
-      .update(users)
-      .set({ 
-        accountDeletionDate: deletionDate,
-        subscriptionEndDate: subscriptionEndDate
+    const { data, error } = await supabase
+      .from("users")
+      .update({ 
+        account_deletion_date: deletionDate.toISOString(),
+        subscription_end_date: subscriptionEndDate.toISOString()
       })
-      .where(eq(users.id, userId))
-      .returning();
-    return result[0];
+      .eq("id", userId)
+      .select()
+      .single();
+    
+    if (error) return undefined;
+    return data as User;
   }
 
   async deleteUserAccount(userId: string): Promise<void> {
     // Delete all consent sessions for this user
-    await this.db.delete(consentSessions).where(eq(consentSessions.initiatorUserId, userId));
+    await supabase
+      .from("consent_sessions")
+      .delete()
+      .eq("initiator_user_id", userId);
     
     // Delete the user
-    await this.db.delete(users).where(eq(users.id, userId));
+    await supabase
+      .from("users")
+      .delete()
+      .eq("id", userId);
   }
 
   async getUsersScheduledForDeletion(): Promise<User[]> {
-    const now = new Date();
-    const result = await this.db.select().from(users);
-    return result.filter(user => {
-      if (!user.accountDeletionDate) return false;
-      const deletionDate = new Date(user.accountDeletionDate);
-      return deletionDate <= now;
-    });
+    const now = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("users")
+      .select("*")
+      .not("account_deletion_date", "is", null)
+      .lte("account_deletion_date", now);
+    
+    if (error) return [];
+    return data as User[];
   }
 
   async createConsentSession(session: InsertConsentSession): Promise<ConsentSession> {
@@ -449,111 +486,149 @@ export class PostgresStorage implements IStorage {
     
     const sessionWithRetention = {
       ...session,
-      retentionUntil
+      retention_until: retentionUntil.toISOString()
     };
     
-    const result = await this.db.insert(consentSessions).values([sessionWithRetention]).returning();
-    return result[0];
+    const { data, error } = await supabase
+      .from("consent_sessions")
+      .insert([sessionWithRetention])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data as ConsentSession;
   }
 
   async getConsentSession(id: string): Promise<ConsentSession | undefined> {
-    const result = await this.db.select().from(consentSessions).where(eq(consentSessions.id, id)).limit(1);
-    return result[0];
+    const { data, error } = await supabase
+      .from("consent_sessions")
+      .select("*")
+      .eq("id", id)
+      .single();
+    
+    if (error) return undefined;
+    return data as ConsentSession;
   }
 
   async getConsentSessionByQrCode(qrCodeId: string): Promise<ConsentSession | undefined> {
-    const result = await this.db.select({
-      session: consentSessions,
-      initiator: users
-    }).from(consentSessions)
-    .leftJoin(users, eq(consentSessions.initiatorUserId, users.id))
-    .where(eq(consentSessions.qrCodeId, qrCodeId)).limit(1);
+    const { data, error } = await supabase
+      .from("consent_sessions")
+      .select(`
+        *,
+        initiator:users!initiator_user_id (
+          id,
+          full_name,
+          profile_picture_url,
+          phone_number
+        )
+      `)
+      .eq("qr_code_id", qrCodeId)
+      .single();
     
-    if (result[0]) {
-      return {
-        ...result[0].session,
-        initiator: result[0].initiator ? {
-          id: result[0].initiator.id,
-          fullName: result[0].initiator.fullName,
-          profilePicture: result[0].initiator.profilePicture,
-          phoneNumber: result[0].initiator.phoneNumber
-        } : undefined
-      } as any;
-    }
-    
-    return undefined;
+    if (error) return undefined;
+    return data as any;
   }
 
   async updateConsentSessionStatus(id: string, status: "pending" | "granted" | "denied" | "revoked", videoAssetId?: string): Promise<ConsentSession | undefined> {
-    const updateData: any = { consentStatus: status };
+    const updateData: any = { consent_status: status };
     if (videoAssetId) {
-      updateData.videoAssetId = videoAssetId;
+      updateData.video_asset_id = videoAssetId;
     }
     if (status === "granted") {
-      updateData.consentGrantedTime = new Date();
+      updateData.consent_granted_time = new Date().toISOString();
     } else if (status === "revoked") {
-      updateData.consentRevokedTime = new Date();
+      updateData.consent_revoked_time = new Date().toISOString();
     }
 
-    const result = await this.db.update(consentSessions)
-      .set(updateData)
-      .where(eq(consentSessions.id, id))
-      .returning();
-    return result[0];
+    const { data, error } = await supabase
+      .from("consent_sessions")
+      .update(updateData)
+      .eq("id", id)
+      .select()
+      .single();
+    
+    if (error) return undefined;
+    return data as ConsentSession;
   }
 
   async updateConsentVerification(id: string, buttonChoice: "granted" | "denied", aiAnalysisResult: string, hasAudioMismatch: boolean): Promise<ConsentSession | undefined> {
-    const result = await this.db.update(consentSessions)
-      .set({
-        buttonChoice,
-        aiAnalysisResult,
-        hasAudioMismatch,
-        verificationStatus: hasAudioMismatch ? "mismatch" : "verified",
-        verifiedAt: new Date(),
+    const { data, error } = await supabase
+      .from("consent_sessions")
+      .update({
+        button_choice: buttonChoice,
+        ai_analysis_result: aiAnalysisResult,
+        has_audio_mismatch: hasAudioMismatch,
+        verification_status: hasAudioMismatch ? "mismatch" : "verified",
+        verified_at: new Date().toISOString(),
       })
-      .where(eq(consentSessions.id, id))
-      .returning();
-    return result[0];
+      .eq("id", id)
+      .select()
+      .single();
+    
+    if (error) return undefined;
+    return data as ConsentSession;
   }
 
   async updateAiAnalysisResult(id: string, aiAnalysisResult: string): Promise<ConsentSession | undefined> {
-    const result = await this.db.update(consentSessions)
-      .set({ aiAnalysisResult })
-      .where(eq(consentSessions.id, id))
-      .returning();
-    return result[0];
+    const { data, error } = await supabase
+      .from("consent_sessions")
+      .update({ ai_analysis_result: aiAnalysisResult })
+      .eq("id", id)
+      .select()
+      .single();
+    
+    if (error) return undefined;
+    return data as ConsentSession;
   }
 
   async createVideoAsset(asset: InsertVideoAsset): Promise<VideoAsset> {
-    const result = await this.db.insert(videoAssets).values([asset]).returning();
-    return result[0];
+    const { data, error } = await supabase
+      .from("video_assets")
+      .insert([asset])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data as VideoAsset;
   }
 
   async getVideoAsset(id: string): Promise<VideoAsset | undefined> {
-    const result = await this.db.select().from(videoAssets).where(eq(videoAssets.id, id)).limit(1);
-    return result[0];
+    const { data, error } = await supabase
+      .from("video_assets")
+      .select("*")
+      .eq("id", id)
+      .single();
+    
+    if (error) return undefined;
+    return data as VideoAsset;
   }
 
   async updateVideoTranscript(id: string, transcript: string, confidence: number): Promise<VideoAsset | undefined> {
-    const result = await this.db.update(videoAssets)
-      .set({
+    const { data, error } = await supabase
+      .from("video_assets")
+      .update({
         transcript,
-        transcriptionConfidence: confidence,
-        transcribedAt: new Date(),
+        transcription_confidence: confidence,
+        transcribed_at: new Date().toISOString(),
       })
-      .where(eq(videoAssets.id, id))
-      .returning();
-    return result[0];
+      .eq("id", id)
+      .select()
+      .single();
+    
+    if (error) return undefined;
+    return data as VideoAsset;
   }
 
   async updateVideoAssetUrl(id: string, storageUrl: string): Promise<VideoAsset | undefined> {
-    const result = await this.db.update(videoAssets)
-      .set({
-        storageUrl,
-      })
-      .where(eq(videoAssets.id, id))
-      .returning();
-    return result[0];
+    const { data, error } = await supabase
+      .from("video_assets")
+      .update({ storage_url: storageUrl })
+      .eq("id", id)
+      .select()
+      .single();
+    
+    if (error) return undefined;
+    return data as VideoAsset;
   }
 
   async generateUploadUrl(filename: string, mimeType: string): Promise<{ uploadUrl: string; storageKey: string }> {
