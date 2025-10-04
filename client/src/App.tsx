@@ -15,6 +15,8 @@ import { ConsentSession } from "@/pages/ConsentSession";
 import { ConsentForm } from "@/pages/ConsentForm";
 import { ElementLearnAndEngage } from "@/pages/ElementLearnAndEngage";
 import Subscribe from "@/pages/Subscribe";
+import PaymentSuccess from "@/pages/PaymentSuccess";
+import PaymentCancel from "@/pages/PaymentCancel";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -33,6 +35,8 @@ function Router() {
       {/* Public routes (no auth required) */}
       <Route path="/" component={LandingPage} />
       <Route path="/consent/form/:qrCodeId?" component={ConsentForm} />
+      <Route path="/success" component={PaymentSuccess} />
+      <Route path="/cancel" component={PaymentCancel} />
       
       {/* Auth routes - AuthScreen handles post-auth redirects based on subscription status */}
       <Route path="/register" component={AuthScreen} />
