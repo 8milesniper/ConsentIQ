@@ -51,6 +51,52 @@ app.use((req, res, next) => {
   next();
 });
 
+// Stripe webhook needs RAW body - must come BEFORE express.json()
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'] as string;
+  let event;
+
+  try {
+    const Stripe = await import('stripe');
+    const stripe = new Stripe.default(process.env.STRIPE_SECRET_KEY!);
+
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET!
+    );
+  } catch (err: any) {
+    console.error("⚠️ Webhook signature verification failed.", err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as any;
+    const userId = session.metadata?.userId;
+
+    if (userId) {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(
+        'https://fvnvmdhvtbvtcfnrobsm.supabase.co',
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+
+      const { error } = await supabase
+        .from("users")
+        .update({ subscription_status: "active" })
+        .eq("id", userId);
+
+      if (error) {
+        console.error("❌ Failed to update Supabase user:", error.message);
+        return res.status(500).send("Supabase update failed");
+      }
+      console.log(`✅ User ${userId} marked active in Supabase`);
+    }
+  }
+
+  res.status(200).send("OK");
+});
+
 app.use(express.json({ limit: '10mb' })); // Increase limit for profile pictures
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 app.use(cookieParser()); // Enable cookie parsing for HTTP-only auth cookies

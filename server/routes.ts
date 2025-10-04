@@ -497,47 +497,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Webhook for Stripe events (subscription updates, cancellations, etc.)
-  app.post("/api/stripe/webhook", async (req, res) => {
-    const sig = req.headers['stripe-signature'] as string;
-    let event;
-
-    try {
-      event = stripe.webhooks.constructEvent(
-        req.body,
-        sig,
-        process.env.STRIPE_WEBHOOK_SECRET!
-      );
-    } catch (err: any) {
-      console.error("⚠️ Webhook signature verification failed.", err.message);
-      return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-
-    if (event.type === "checkout.session.completed") {
-      const session = event.data.object as Stripe.Checkout.Session;
-      const userId = session.metadata?.userId;
-
-      if (userId) {
-        const supabase = createClient(
-          'https://fvnvmdhvtbvtcfnrobsm.supabase.co',
-          process.env.SUPABASE_SERVICE_ROLE_KEY!
-        );
-
-        const { error } = await supabase
-          .from("users")
-          .update({ subscription_status: "active" })
-          .eq("id", userId);
-
-        if (error) {
-          console.error("❌ Failed to update Supabase user:", error.message);
-          return res.status(500).send("Supabase update failed");
-        }
-        console.log(`✅ User ${userId} marked active in Supabase`);
-      }
-    }
-
-    res.status(200).send("OK");
-  });
+  // Webhook handler moved to server/index.ts (needs raw body before JSON parser)
 
   // Consent Session Routes
   
