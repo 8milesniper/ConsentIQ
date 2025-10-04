@@ -12,6 +12,7 @@ import * as fs from "fs";
 import * as path from "path";
 import Stripe from "stripe";
 import { uploadConsentVideo, uploadProfilePicture, getSignedVideoUrl } from "./supabaseStorage";
+import { createClient } from "@supabase/supabase-js";
 
 // Extend Express Request type to include user
 interface AuthenticatedRequest extends Request {
@@ -540,136 +541,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Webhook for Stripe events (subscription updates, cancellations, etc.)
   app.post("/api/stripe/webhook", async (req, res) => {
     const sig = req.headers['stripe-signature'] as string;
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    
+    let event;
+
     try {
-      let event;
-      
-      // Verify webhook signature if secret is configured
-      if (webhookSecret && sig) {
-        try {
-          event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-        } catch (err: any) {
-          console.error('Webhook signature verification failed:', err.message);
-          res.status(400).json({ error: 'Webhook signature verification failed' });
-          return;
-        }
-      } else {
-        // For development without webhook secret
-        console.warn('⚠️ Stripe webhook signature verification skipped - set STRIPE_WEBHOOK_SECRET for production');
-        event = req.body;
-      }
-
-      // Handle subscription events
-      switch (event.type) {
-        case 'checkout.session.completed':
-          // When checkout session completes, save subscription info
-          const session = event.data.object;
-          if (session.mode === 'subscription' && session.subscription && session.metadata?.userId) {
-            const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
-            await storage.updateUserStripeInfo(
-              session.metadata.userId,
-              session.customer as string,
-              subscription.id,
-              session.metadata.plan || 'monthly',
-              subscription.status
-            );
-          }
-          break;
-
-        case 'invoice.payment_succeeded':
-          // When payment succeeds, update subscription status to active and clear deletion schedule
-          const invoice = event.data.object;
-          if (invoice.subscription) {
-            const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
-            
-            // Update status to active when payment succeeds
-            if (subscription.metadata?.userId) {
-              console.log(`✅ Updating user ${subscription.metadata.userId} to status: ${subscription.status}`);
-              await storage.updateUserSubscriptionStatus(subscription.metadata.userId, subscription.status);
-              
-              // If subscription is active, clear any scheduled deletion
-              if (subscription.status === 'active') {
-                await storage.scheduleAccountDeletion(
-                  subscription.metadata.userId,
-                  null as any, // Clear deletion date
-                  null as any  // Clear subscription end date
-                );
-              }
-            } else {
-              console.error('❌ No userId found in subscription metadata for invoice.payment_succeeded');
-              console.error('Subscription ID:', subscription.id);
-              console.error('Customer ID:', subscription.customer);
-            }
-          }
-          break;
-          
-        case 'customer.subscription.updated':
-          const updatedSubscription = event.data.object;
-          
-          // Update user's subscription status
-          if (updatedSubscription.metadata?.userId) {
-            console.log(`✅ Updating user ${updatedSubscription.metadata.userId} to status: ${updatedSubscription.status}`);
-            await storage.updateUserSubscriptionStatus(updatedSubscription.metadata.userId, updatedSubscription.status);
-            
-            // Handle different subscription states
-            if (updatedSubscription.status === 'past_due') {
-              // Payment failed - give 7 days to fix
-              const now = new Date();
-              const deletionDate = new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000)); // 7 days from now
-              
-              await storage.scheduleAccountDeletion(
-                updatedSubscription.metadata.userId,
-                deletionDate,
-                now
-              );
-            } else if (updatedSubscription.status === 'active') {
-              // Payment succeeded or resubscribed - clear any deletion schedule
-              await storage.scheduleAccountDeletion(
-                updatedSubscription.metadata.userId,
-                null as any,
-                null as any
-              );
-            } else if (updatedSubscription.status === 'canceled' && updatedSubscription.canceled_at) {
-              // User canceled - schedule deletion 7 days after subscription ends
-              const cancelDate = new Date(updatedSubscription.canceled_at * 1000);
-              const subscriptionEndDate = updatedSubscription.current_period_end 
-                ? new Date(updatedSubscription.current_period_end * 1000)
-                : cancelDate;
-              const deletionDate = new Date(subscriptionEndDate.getTime() + (7 * 24 * 60 * 60 * 1000));
-              
-              await storage.scheduleAccountDeletion(
-                updatedSubscription.metadata.userId,
-                deletionDate,
-                subscriptionEndDate
-              );
-            }
-          }
-          break;
-          
-        case 'customer.subscription.deleted':
-          const deletedSubscription = event.data.object;
-          
-          // When subscription is deleted, schedule account deletion if not already scheduled
-          if (deletedSubscription.metadata?.userId) {
-            const now = new Date();
-            const deletionDate = new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000)); // 7 days from deletion
-            
-            await storage.updateUserSubscriptionStatus(deletedSubscription.metadata.userId, 'canceled');
-            await storage.scheduleAccountDeletion(
-              deletedSubscription.metadata.userId,
-              deletionDate,
-              now
-            );
-          }
-          break;
-      }
-
-      res.json({ received: true });
-    } catch (error: any) {
-      console.error('Webhook error:', error);
-      res.status(400).json({ error: error.message });
+      event = stripe.webhooks.constructEvent(
+        req.body,
+        sig,
+        process.env.STRIPE_WEBHOOK_SECRET!
+      );
+    } catch (err: any) {
+      console.error("⚠️ Webhook signature verification failed.", err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
     }
+
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const userId = session.metadata?.userId;
+
+      if (userId) {
+        const supabase = createClient(
+          process.env.SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
+        const { error } = await supabase
+          .from("users")
+          .update({ subscription_status: "active" })
+          .eq("id", userId);
+
+        if (error) {
+          console.error("❌ Failed to update Supabase user:", error.message);
+          return res.status(500).send("Supabase update failed");
+        }
+        console.log(`✅ User ${userId} marked active in Supabase`);
+      }
+    }
+
+    res.status(200).send("OK");
   });
 
   // Consent Session Routes
