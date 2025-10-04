@@ -388,23 +388,34 @@ export class PostgresStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const { data, error } = await supabase
-      .from("users")
-      .insert([{
-        username: insertUser.username,
-        password: insertUser.password,
-        full_name: insertUser.fullName,
-        phone_number: insertUser.phoneNumber,
-        profile_picture: insertUser.profilePicture
-      }])
-      .select()
-      .single();
-    
-    if (error) {
-      console.error('Supabase createUser error:', JSON.stringify(error, null, 2));
-      throw new Error(`Database insert failed: ${error.message || JSON.stringify(error)}`);
+    try {
+      console.log('SUPABASE_URL:', process.env.SUPABASE_URL);
+      console.log('Creating user with username:', insertUser.username);
+      
+      const { data, error } = await supabase
+        .from("users")
+        .insert([{
+          username: insertUser.username,
+          password: insertUser.password,
+          full_name: insertUser.fullName,
+          phone_number: insertUser.phoneNumber,
+          profile_picture: insertUser.profilePicture
+        }])
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Supabase createUser error:', JSON.stringify(error, null, 2));
+        throw new Error(`Database insert failed: ${error.message || JSON.stringify(error)}`);
+      }
+      return data as User;
+    } catch (err: any) {
+      console.error('createUser exception:', err);
+      console.error('Exception type:', err.constructor.name);
+      console.error('Exception message:', err.message);
+      console.error('Exception stack:', err.stack);
+      throw new Error(`Database insert failed: ${err}`);
     }
-    return data as User;
   }
 
   async updateUserProfilePictureUrl(userId: string, profilePictureUrl: string): Promise<User | undefined> {
