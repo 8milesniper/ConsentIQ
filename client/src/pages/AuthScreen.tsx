@@ -26,11 +26,18 @@ type CreateAccountData = z.infer<typeof createAccountSchema>;
 type SignInData = z.infer<typeof signInSchema>;
 
 export const AuthScreen = (): JSX.Element => {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { toast } = useToast();
   const { setAuthData, isAuthenticated, user } = useAuth();
   const [profileImage, setProfileImage] = useState<string | null>(null);
-  const [isSignIn, setIsSignIn] = useState(false);
+  
+  // Initialize isSignIn based on current route
+  const [isSignIn, setIsSignIn] = useState(location === '/login');
+
+  // Update isSignIn when route changes
+  useEffect(() => {
+    setIsSignIn(location === '/login');
+  }, [location]);
 
   // Don't auto-redirect - let users see the auth form
   // Redirection happens AFTER successful login/registration
@@ -303,7 +310,7 @@ export const AuthScreen = (): JSX.Element => {
           <p className="text-gray-400 text-sm">
             {isSignIn ? "New to ConsentIQ? " : "Already have an account? "}
             <button 
-              onClick={() => setIsSignIn(!isSignIn)} 
+              onClick={() => setLocation(isSignIn ? '/register' : '/login')} 
               className="text-[#4ade80] hover:text-[#22c55e] font-medium"
               data-testid={isSignIn ? "link-create-account" : "link-sign-in"}
             >
