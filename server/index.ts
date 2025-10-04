@@ -87,8 +87,8 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
       const stripe = new Stripe.default(process.env.STRIPE_SECRET_KEY!);
       const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
       
-      // Calculate subscription end date
-      const endDate = new Date(subscription.current_period_end * 1000).toISOString();
+      // Calculate subscription end date (current_period_end is in Unix timestamp seconds)
+      const endDate = new Date((subscription as any).current_period_end * 1000).toISOString();
 
       const { error } = await supabase
         .from("users")

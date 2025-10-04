@@ -11,41 +11,56 @@ export default function PaymentSuccess() {
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('session_id');
+
+    if (!sessionId) {
+      setStatus('error');
+      setErrorMessage('No payment session found');
+      return;
+    }
+
+    let attempts = 0;
+    const maxAttempts = 12; // 12 attempts over 1 minute
+
     const verifyPayment = async () => {
       try {
-        const params = new URLSearchParams(window.location.search);
-        const sessionId = params.get('session_id');
-
-        if (!sessionId) {
-          setStatus('error');
-          setErrorMessage('No payment session found');
-          return;
-        }
-
-        const res = await apiRequest('POST', '/api/stripe/verify-payment', { sessionId });
+        attempts++;
         
-        if (!res.ok) {
-          const error = await res.json();
-          throw new Error(error.error || 'Payment verification failed');
-        }
-
-        const data = await res.json();
-        
-        if (data.subscriptionStatus === 'active') {
-          setStatus('success');
-          queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+        // Check if webhook has updated the user by fetching current user
+        const userRes = await apiRequest('GET', '/api/auth/me');
+        if (userRes.ok) {
+          const userData = await userRes.json();
           
-          setTimeout(() => {
-            setLocation('/dashboard');
-          }, 3000);
+          // If subscription is already active, we're done
+          if (userData.subscriptionStatus === 'active') {
+            setStatus('success');
+            queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+            
+            setTimeout(() => {
+              setLocation('/dashboard');
+            }, 2000);
+            return;
+          }
+        }
+
+        // If webhook hasn't fired yet and we haven't exceeded max attempts, try again
+        if (attempts < maxAttempts) {
+          setTimeout(verifyPayment, 5000); // Check again in 5 seconds
         } else {
+          // Max attempts reached - show error with option to continue
           setStatus('error');
-          setErrorMessage('Subscription not active yet. Please wait a moment and try again.');
+          setErrorMessage('Subscription verification is taking longer than expected. Your payment was successful, but please refresh this page or try logging in again.');
         }
       } catch (error: any) {
         console.error('Payment verification error:', error);
-        setStatus('error');
-        setErrorMessage(error.message || 'Failed to verify payment');
+        
+        if (attempts < maxAttempts) {
+          setTimeout(verifyPayment, 5000); // Retry on error
+        } else {
+          setStatus('error');
+          setErrorMessage(error.message || 'Failed to verify payment. Please try logging in again.');
+        }
       }
     };
 
