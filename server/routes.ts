@@ -192,7 +192,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { username, password, fullName, phoneNumber } = req.body;
 
       const supabaseClient = createClient(
-        'https://fvnvmdhvtbvtcfnrobsm.supabase.co',
+        process.env.SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
       );
 
