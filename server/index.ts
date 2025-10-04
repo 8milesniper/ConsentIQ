@@ -73,6 +73,7 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as any;
     const userId = session.metadata?.userId;
+    const plan = session.subscription_data?.metadata?.plan || session.metadata?.plan || 'monthly';
 
     if (userId) {
       const { createClient } = await import('@supabase/supabase-js');
@@ -81,16 +82,30 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
         process.env.SUPABASE_SERVICE_ROLE_KEY!
       );
 
+      // Get subscription details from Stripe
+      const Stripe = await import('stripe');
+      const stripe = new Stripe.default(process.env.STRIPE_SECRET_KEY!);
+      const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
+      
+      // Calculate subscription end date
+      const endDate = new Date(subscription.current_period_end * 1000).toISOString();
+
       const { error } = await supabase
         .from("users")
-        .update({ subscription_status: "active" })
+        .update({ 
+          subscription_status: "active",
+          stripe_customer_id: session.customer as string,
+          stripe_subscription_id: session.subscription as string,
+          subscription_plan: plan,
+          subscription_end_date: endDate
+        })
         .eq("id", userId);
 
       if (error) {
         console.error("❌ Failed to update Supabase user:", error.message);
         return res.status(500).send("Supabase update failed");
       }
-      console.log(`✅ User ${userId} marked active in Supabase`);
+      console.log(`✅ User ${userId} subscription activated: ${plan} plan, ends ${endDate}`);
     }
   }
 
