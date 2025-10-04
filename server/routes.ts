@@ -434,7 +434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create Checkout Session for subscription
       const baseUrl = process.env.FRONTEND_URL || 
         (process.env.NODE_ENV === 'production' 
-          ? 'https://www.consentiq.tech'
+          ? 'https://consentiq.tech'
           : `${req.protocol}://${req.get('host')}`);
         
       const session = await stripe.checkout.sessions.create({
