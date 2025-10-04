@@ -142,7 +142,7 @@ export class MemStorage implements IStorage {
     this.users.delete(userId);
     
     // Delete all consent sessions for this user
-    for (const [sessionId, session] of this.consentSessions.entries()) {
+    for (const [sessionId, session] of Array.from(this.consentSessions.entries())) {
       if (session.initiatorUserId === userId) {
         this.consentSessions.delete(sessionId);
       }
