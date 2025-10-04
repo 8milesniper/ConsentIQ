@@ -165,24 +165,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Test Supabase connection
-  app.get("/api/test-supabase", async (req, res) => {
-    try {
-      const testUser = await storage.getUserByUsername("test-connection@test.com");
-      res.json({ 
-        success: true, 
-        message: "Supabase connected", 
-        userFound: !!testUser,
-        supabaseUrl: process.env.SUPABASE_URL
-      });
-    } catch (error: any) {
-      res.status(500).json({ 
-        success: false, 
-        error: error.message,
-        details: error.toString(),
-        supabaseUrl: process.env.SUPABASE_URL
-      });
-    }
+  // Diagnostic route: shows the Supabase URL being used in production
+  app.get("/api/test-supabase", (req, res) => {
+    res.json({
+      SUPABASE_URL: process.env.SUPABASE_URL || "❌ NOT SET",
+      SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ? "✅ SET" : "❌ MISSING"
+    });
   });
 
   // Logout endpoint
