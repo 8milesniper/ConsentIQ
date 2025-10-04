@@ -38,7 +38,7 @@ export default function PaymentSuccess() {
             queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
             
             setTimeout(() => {
-              setLocation('/dashboard');
+              setLocation('/consent/new');
             }, 2000);
             return;
           }
@@ -91,7 +91,7 @@ export default function PaymentSuccess() {
             <CheckCircle2 className="h-16 w-16 text-[#4ade80]" data-testid="icon-success" />
             <h2 className="text-2xl font-bold text-white">Payment Successful!</h2>
             <p className="text-gray-400">
-              Your subscription is now active. Redirecting to your dashboard...
+              Your subscription is now active. Let's create your first consent session...
             </p>
             <div className="w-full bg-slate-700 h-2 rounded-full overflow-hidden mt-4">
               <div className="bg-[#4ade80] h-full animate-pulse" style={{ width: '100%' }}></div>
