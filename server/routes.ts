@@ -519,7 +519,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (userId) {
         const supabase = createClient(
-          process.env.SUPABASE_URL!,
+          'https://fvnvmdhvtbvtcfnrobsm.supabase.co',
           process.env.SUPABASE_SERVICE_ROLE_KEY!
         );
 

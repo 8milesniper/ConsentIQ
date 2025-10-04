@@ -1,11 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
-if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('Missing Supabase credentials. Please set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables.');
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('Missing Supabase credentials. Please set SUPABASE_SERVICE_ROLE_KEY environment variable.');
 }
 
 const supabase = createClient(
-  process.env.SUPABASE_URL,
+  'https://fvnvmdhvtbvtcfnrobsm.supabase.co',
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
