@@ -390,7 +390,13 @@ export class PostgresStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     const { data, error } = await supabase
       .from("users")
-      .insert([insertUser])
+      .insert([{
+        username: insertUser.username,
+        password: insertUser.password,
+        full_name: insertUser.fullName,
+        phone_number: insertUser.phoneNumber,
+        profile_picture: insertUser.profilePicture
+      }])
       .select()
       .single();
     
