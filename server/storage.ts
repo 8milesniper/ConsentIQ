@@ -400,7 +400,10 @@ export class PostgresStorage implements IStorage {
       .select()
       .single();
     
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase createUser error:', JSON.stringify(error, null, 2));
+      throw new Error(`Database insert failed: ${error.message || JSON.stringify(error)}`);
+    }
     return data as User;
   }
 
