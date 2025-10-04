@@ -2,9 +2,13 @@ import { type User, type SafeUser, type InsertUser, type ConsentSession, type In
 import { randomUUID } from "crypto";
 import { createClient } from "@supabase/supabase-js";
 
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('Missing required environment variables: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY');
+}
+
 export const supabase = createClient(
-  'https://fvnvmdhvtbvtcfnrobsm.supabase.co',
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 // modify the interface with any CRUD methods

@@ -78,7 +78,7 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
     if (userId) {
       const { createClient } = await import('@supabase/supabase-js');
       const supabase = createClient(
-        'https://fvnvmdhvtbvtcfnrobsm.supabase.co',
+        process.env.SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
       );
 
