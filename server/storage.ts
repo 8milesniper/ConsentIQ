@@ -392,6 +392,70 @@ export class MemStorage implements IStorage {
 }
 
 // Supabase Storage Implementation
+// Helper functions to map database fields
+function mapUserFromDb(data: any): User {
+  return {
+    id: data.id,
+    username: data.username,
+    password: data.password,
+    fullName: data.full_name,
+    phoneNumber: data.phone_number,
+    profilePicture: data.profile_picture,
+    profilePictureUrl: data.profile_picture_url,
+    stripeCustomerId: data.stripe_customer_id,
+    stripeSubscriptionId: data.stripe_subscription_id,
+    subscriptionStatus: data.subscription_status,
+    subscriptionPlan: data.subscription_plan,
+    subscriptionEndDate: data.subscription_end_date,
+    accountDeletionDate: data.account_deletion_date,
+    role: data.role
+  } as User;
+}
+
+function mapVideoAssetFromDb(data: any): VideoAsset {
+  return {
+    id: data.id,
+    filename: data.filename,
+    originalName: data.original_name,
+    mimeType: data.mime_type,
+    fileSize: data.file_size,
+    duration: data.duration,
+    resolution: data.resolution,
+    storageKey: data.storage_key,
+    storageUrl: data.storage_url,
+    uploadedAt: data.uploaded_at,
+    isEncrypted: data.is_encrypted,
+    checksum: data.checksum,
+    transcript: data.transcript,
+    transcriptionConfidence: data.transcription_confidence,
+    transcribedAt: data.transcribed_at
+  } as VideoAsset;
+}
+
+function mapConsentSessionFromDb(data: any): ConsentSession {
+  return {
+    id: data.id,
+    qrCodeId: data.qr_code_id,
+    initiatorUserId: data.initiator_user_id,
+    participantName: data.participant_name,
+    participantPhone: data.participant_phone,
+    participantAge: data.participant_age,
+    consentStatus: data.consent_status,
+    videoAssetId: data.video_asset_id,
+    deleteAfterDays: data.delete_after_days,
+    sessionStartTime: data.session_start_time,
+    consentGrantedTime: data.consent_granted_time,
+    consentRevokedTime: data.consent_revoked_time,
+    retentionUntil: data.retention_until,
+    verificationStatus: data.verification_status,
+    aiAnalysisResult: data.ai_analysis_result,
+    aiTranscript: data.ai_transcript,
+    hasAudioMismatch: data.has_audio_mismatch,
+    verifiedAt: data.verified_at,
+    buttonChoice: data.button_choice
+  } as ConsentSession;
+}
+
 export class PostgresStorage implements IStorage {
   constructor() {
     if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -474,7 +538,7 @@ export class PostgresStorage implements IStorage {
         console.error('Supabase createUser error:', JSON.stringify(error, null, 2));
         throw new Error(`Database insert failed: ${error.message || JSON.stringify(error)}`);
       }
-      return data as User;
+      return mapUserFromDb(data);
     } catch (err: any) {
       console.error('createUser exception:', err);
       console.error('Exception type:', err.constructor.name);
@@ -496,7 +560,7 @@ export class PostgresStorage implements IStorage {
       console.error('updateUserPassword error:', error);
       return undefined;
     }
-    return data as User;
+    return mapUserFromDb(data);
   }
 
   async updateUserProfilePictureUrl(userId: string, profilePictureUrl: string): Promise<User | undefined> {
@@ -508,7 +572,7 @@ export class PostgresStorage implements IStorage {
       .single();
     
     if (error) return undefined;
-    return data as User;
+    return mapUserFromDb(data);
   }
 
   async updateUserStripeInfo(userId: string, stripeCustomerId: string, stripeSubscriptionId: string, subscriptionPlan: string, subscriptionStatus: string): Promise<User | undefined> {
@@ -525,7 +589,7 @@ export class PostgresStorage implements IStorage {
       .single();
     
     if (error) return undefined;
-    return data as User;
+    return mapUserFromDb(data);
   }
 
   async updateUserSubscriptionStatus(userId: string, status: string): Promise<User | undefined> {
@@ -537,7 +601,7 @@ export class PostgresStorage implements IStorage {
       .single();
     
     if (error) return undefined;
-    return data as User;
+    return mapUserFromDb(data);
   }
 
   async scheduleAccountDeletion(userId: string, deletionDate: Date, subscriptionEndDate: Date): Promise<User | undefined> {
@@ -552,7 +616,7 @@ export class PostgresStorage implements IStorage {
       .single();
     
     if (error) return undefined;
-    return data as User;
+    return mapUserFromDb(data);
   }
 
   async deleteUserAccount(userId: string): Promise<void> {
@@ -578,7 +642,7 @@ export class PostgresStorage implements IStorage {
       .lte("account_deletion_date", now);
     
     if (error) return [];
-    return data as User[];
+    return data.map(mapUserFromDb);
   }
 
   async createConsentSession(session: InsertConsentSession): Promise<ConsentSession> {
@@ -605,29 +669,7 @@ export class PostgresStorage implements IStorage {
       .single();
     
     if (error) throw error;
-    
-    // Map snake_case back to camelCase for return
-    return {
-      id: data.id,
-      qrCodeId: data.qr_code_id,
-      initiatorUserId: data.initiator_user_id,
-      participantName: data.participant_name,
-      participantPhone: data.participant_phone,
-      participantAge: data.participant_age,
-      consentStatus: data.consent_status,
-      videoAssetId: data.video_asset_id,
-      deleteAfterDays: data.delete_after_days,
-      sessionStartTime: data.session_start_time,
-      consentGrantedTime: data.consent_granted_time,
-      consentRevokedTime: data.consent_revoked_time,
-      retentionUntil: data.retention_until,
-      verificationStatus: data.verification_status,
-      aiAnalysisResult: data.ai_analysis_result,
-      aiTranscript: data.ai_transcript,
-      hasAudioMismatch: data.has_audio_mismatch,
-      verifiedAt: data.verified_at,
-      buttonChoice: data.button_choice
-    } as ConsentSession;
+    return mapConsentSessionFromDb(data);
   }
 
   async getConsentSession(id: string): Promise<ConsentSession | undefined> {
@@ -638,29 +680,7 @@ export class PostgresStorage implements IStorage {
       .single();
     
     if (error) return undefined;
-    
-    // Map snake_case to camelCase
-    return {
-      id: data.id,
-      qrCodeId: data.qr_code_id,
-      initiatorUserId: data.initiator_user_id,
-      participantName: data.participant_name,
-      participantPhone: data.participant_phone,
-      participantAge: data.participant_age,
-      consentStatus: data.consent_status,
-      videoAssetId: data.video_asset_id,
-      deleteAfterDays: data.delete_after_days,
-      sessionStartTime: data.session_start_time,
-      consentGrantedTime: data.consent_granted_time,
-      consentRevokedTime: data.consent_revoked_time,
-      retentionUntil: data.retention_until,
-      verificationStatus: data.verification_status,
-      aiAnalysisResult: data.ai_analysis_result,
-      aiTranscript: data.ai_transcript,
-      hasAudioMismatch: data.has_audio_mismatch,
-      verifiedAt: data.verified_at,
-      buttonChoice: data.button_choice
-    } as ConsentSession;
+    return mapConsentSessionFromDb(data);
   }
 
   async getConsentSessionByQrCode(qrCodeId: string): Promise<ConsentSession | undefined> {
@@ -680,27 +700,10 @@ export class PostgresStorage implements IStorage {
     
     if (error) return undefined;
     
-    // Map snake_case to camelCase
+    // Map snake_case to camelCase with initiator info
+    const session = mapConsentSessionFromDb(data);
     return {
-      id: data.id,
-      qrCodeId: data.qr_code_id,
-      initiatorUserId: data.initiator_user_id,
-      participantName: data.participant_name,
-      participantPhone: data.participant_phone,
-      participantAge: data.participant_age,
-      consentStatus: data.consent_status,
-      videoAssetId: data.video_asset_id,
-      deleteAfterDays: data.delete_after_days,
-      sessionStartTime: data.session_start_time,
-      consentGrantedTime: data.consent_granted_time,
-      consentRevokedTime: data.consent_revoked_time,
-      retentionUntil: data.retention_until,
-      verificationStatus: data.verification_status,
-      aiAnalysisResult: data.ai_analysis_result,
-      aiTranscript: data.ai_transcript,
-      hasAudioMismatch: data.has_audio_mismatch,
-      verifiedAt: data.verified_at,
-      buttonChoice: data.button_choice,
+      ...session,
       initiator: data.initiator ? {
         id: data.initiator.id,
         fullName: data.initiator.full_name,
@@ -729,29 +732,7 @@ export class PostgresStorage implements IStorage {
       .single();
     
     if (error) return undefined;
-    
-    // Map snake_case to camelCase
-    return {
-      id: data.id,
-      qrCodeId: data.qr_code_id,
-      initiatorUserId: data.initiator_user_id,
-      participantName: data.participant_name,
-      participantPhone: data.participant_phone,
-      participantAge: data.participant_age,
-      consentStatus: data.consent_status,
-      videoAssetId: data.video_asset_id,
-      deleteAfterDays: data.delete_after_days,
-      sessionStartTime: data.session_start_time,
-      consentGrantedTime: data.consent_granted_time,
-      consentRevokedTime: data.consent_revoked_time,
-      retentionUntil: data.retention_until,
-      verificationStatus: data.verification_status,
-      aiAnalysisResult: data.ai_analysis_result,
-      aiTranscript: data.ai_transcript,
-      hasAudioMismatch: data.has_audio_mismatch,
-      verifiedAt: data.verified_at,
-      buttonChoice: data.button_choice
-    } as ConsentSession;
+    return mapConsentSessionFromDb(data);
   }
 
   async updateConsentVerification(id: string, buttonChoice: "granted" | "denied", aiAnalysisResult: string, hasAudioMismatch: boolean): Promise<ConsentSession | undefined> {
@@ -769,29 +750,7 @@ export class PostgresStorage implements IStorage {
       .single();
     
     if (error) return undefined;
-    
-    // Map snake_case to camelCase
-    return {
-      id: data.id,
-      qrCodeId: data.qr_code_id,
-      initiatorUserId: data.initiator_user_id,
-      participantName: data.participant_name,
-      participantPhone: data.participant_phone,
-      participantAge: data.participant_age,
-      consentStatus: data.consent_status,
-      videoAssetId: data.video_asset_id,
-      deleteAfterDays: data.delete_after_days,
-      sessionStartTime: data.session_start_time,
-      consentGrantedTime: data.consent_granted_time,
-      consentRevokedTime: data.consent_revoked_time,
-      retentionUntil: data.retention_until,
-      verificationStatus: data.verification_status,
-      aiAnalysisResult: data.ai_analysis_result,
-      aiTranscript: data.ai_transcript,
-      hasAudioMismatch: data.has_audio_mismatch,
-      verifiedAt: data.verified_at,
-      buttonChoice: data.button_choice
-    } as ConsentSession;
+    return mapConsentSessionFromDb(data);
   }
 
   async updateAiAnalysisResult(id: string, aiAnalysisResult: string): Promise<ConsentSession | undefined> {
@@ -803,29 +762,7 @@ export class PostgresStorage implements IStorage {
       .single();
     
     if (error) return undefined;
-    
-    // Map snake_case to camelCase
-    return {
-      id: data.id,
-      qrCodeId: data.qr_code_id,
-      initiatorUserId: data.initiator_user_id,
-      participantName: data.participant_name,
-      participantPhone: data.participant_phone,
-      participantAge: data.participant_age,
-      consentStatus: data.consent_status,
-      videoAssetId: data.video_asset_id,
-      deleteAfterDays: data.delete_after_days,
-      sessionStartTime: data.session_start_time,
-      consentGrantedTime: data.consent_granted_time,
-      consentRevokedTime: data.consent_revoked_time,
-      retentionUntil: data.retention_until,
-      verificationStatus: data.verification_status,
-      aiAnalysisResult: data.ai_analysis_result,
-      aiTranscript: data.ai_transcript,
-      hasAudioMismatch: data.has_audio_mismatch,
-      verifiedAt: data.verified_at,
-      buttonChoice: data.button_choice
-    } as ConsentSession;
+    return mapConsentSessionFromDb(data);
   }
 
   async updateConsentTranscript(id: string, aiTranscript: string): Promise<ConsentSession | undefined> {
@@ -837,29 +774,7 @@ export class PostgresStorage implements IStorage {
       .single();
     
     if (error) return undefined;
-    
-    // Map snake_case to camelCase
-    return {
-      id: data.id,
-      qrCodeId: data.qr_code_id,
-      initiatorUserId: data.initiator_user_id,
-      participantName: data.participant_name,
-      participantPhone: data.participant_phone,
-      participantAge: data.participant_age,
-      consentStatus: data.consent_status,
-      videoAssetId: data.video_asset_id,
-      deleteAfterDays: data.delete_after_days,
-      sessionStartTime: data.session_start_time,
-      consentGrantedTime: data.consent_granted_time,
-      consentRevokedTime: data.consent_revoked_time,
-      retentionUntil: data.retention_until,
-      verificationStatus: data.verification_status,
-      aiAnalysisResult: data.ai_analysis_result,
-      aiTranscript: data.ai_transcript,
-      hasAudioMismatch: data.has_audio_mismatch,
-      verifiedAt: data.verified_at,
-      buttonChoice: data.button_choice
-    } as ConsentSession;
+    return mapConsentSessionFromDb(data);
   }
 
   async createVideoAsset(asset: InsertVideoAsset): Promise<VideoAsset> {
@@ -870,7 +785,7 @@ export class PostgresStorage implements IStorage {
       .single();
     
     if (error) throw error;
-    return data as VideoAsset;
+    return mapVideoAssetFromDb(data);
   }
 
   async getVideoAsset(id: string): Promise<VideoAsset | undefined> {
@@ -881,7 +796,7 @@ export class PostgresStorage implements IStorage {
       .single();
     
     if (error) return undefined;
-    return data as VideoAsset;
+    return mapVideoAssetFromDb(data);
   }
 
   async updateVideoTranscript(id: string, transcript: string, confidence: number): Promise<VideoAsset | undefined> {
@@ -897,7 +812,7 @@ export class PostgresStorage implements IStorage {
       .single();
     
     if (error) return undefined;
-    return data as VideoAsset;
+    return mapVideoAssetFromDb(data);
   }
 
   async updateVideoAssetUrl(id: string, storageUrl: string): Promise<VideoAsset | undefined> {
@@ -909,7 +824,7 @@ export class PostgresStorage implements IStorage {
       .single();
     
     if (error) return undefined;
-    return data as VideoAsset;
+    return mapVideoAssetFromDb(data);
   }
 
   async generateUploadUrl(filename: string, mimeType: string): Promise<{ uploadUrl: string; storageKey: string }> {

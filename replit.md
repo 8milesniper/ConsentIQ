@@ -35,6 +35,15 @@ Preferred communication style: Simple, everyday language.
 - **Enums**: PostgreSQL enums for consent status (pending, granted, denied, revoked)
 - **Admin System**: Role-based access control with admin/user roles
 
+### Field Mapping Pattern (CRITICAL)
+**Database columns use snake_case, TypeScript properties use camelCase**
+- `server/storage.ts` contains helper functions that MUST be used for ALL database operations:
+  - `mapUserFromDb(data)` - Maps User table fields (full_name → fullName, etc.)
+  - `mapVideoAssetFromDb(data)` - Maps VideoAsset fields (storage_url → storageUrl, etc.)
+  - `mapConsentSessionFromDb(data)` - Maps ConsentSession fields (qr_code_id → qrCodeId, etc.)
+- **NEVER return raw database data** - always use these mapper functions
+- This prevents snake_case/camelCase mismatches that break frontend-backend communication
+
 ## Subscription System
 - **Payment Gateway**: Stripe integration for secure payment processing
 - **Subscription Tiers**: Monthly ($40/month) and Annual ($400/year) plans with $80 annual savings
