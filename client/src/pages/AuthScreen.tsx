@@ -44,18 +44,26 @@ export const AuthScreen = (): JSX.Element => {
 
   const form = useForm<CreateAccountData | SignInData>({
     resolver: zodResolver(isSignIn ? signInSchema : createAccountSchema),
-    defaultValues: {
-      fullName: "",
-      phoneNumber: "",
-      email: "",
-      password: "",
-    },
+    defaultValues: isSignIn 
+      ? {
+          email: "",
+          password: "",
+        }
+      : {
+          fullName: "",
+          phoneNumber: "",
+          email: "",
+          password: "",
+        },
   });  
   
   // Reset form when switching between sign-in and create account
   useEffect(() => {
-    form.reset();
-  }, [isSignIn]);
+    form.reset(isSignIn 
+      ? { email: "", password: "" }
+      : { fullName: "", phoneNumber: "", email: "", password: "" }
+    );
+  }, [isSignIn, form]);
 
   const authMutation = useMutation({
     mutationFn: async (data: CreateAccountData | SignInData) => {
@@ -125,8 +133,6 @@ export const AuthScreen = (): JSX.Element => {
   });
 
   const onSubmit = (data: CreateAccountData | SignInData) => {
-    console.log('Form submitted:', { isSignIn, data });
-    
     // Require profile picture for registration (not for sign-in)
     if (!isSignIn && !profileImage) {
       toast({
@@ -136,8 +142,6 @@ export const AuthScreen = (): JSX.Element => {
       });
       return;
     }
-    
-    console.log('About to call authMutation.mutate');
     authMutation.mutate(data);
   };
 
@@ -303,10 +307,6 @@ export const AuthScreen = (): JSX.Element => {
               disabled={authMutation.isPending}
               className="w-full bg-[#4ade80] hover:bg-[#22c55e] text-white font-semibold py-3 rounded-md transition-colors"
               data-testid={isSignIn ? "button-sign-in" : "button-create-account"}
-              onClick={() => {
-                console.log('Button clicked! Form state:', form.formState);
-                console.log('Form errors:', form.formState.errors);
-              }}
             >
               {authMutation.isPending ? (isSignIn ? "Signing In..." : "Creating Account...") : (isSignIn ? "Sign In" : "Create Account")}
             </Button>
