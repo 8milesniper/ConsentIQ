@@ -5,8 +5,13 @@ import cookieParser from "cookie-parser";
 
 const app = express();
 
-// Health check endpoint at root (for deployment health checks)
+// CRITICAL: Health check endpoint MUST be first for deployment health checks
+// This responds to Replit's deployment health check probes on port 80
 app.get('/', (req, res) => {
+  res.status(200).send('OK');
+});
+
+app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'ok', 
     service: 'ConsentIQ',
@@ -170,6 +175,11 @@ app.use((req, res, next) => {
       await setupVite(app, server);
     } else {
       serveStatic(app);
+      
+      // In production, re-register health check AFTER static files to ensure it's not overridden
+      app.get('/', (req, res) => {
+        res.status(200).send('OK');
+      });
     }
 
     // ALWAYS serve the app on the port specified in the environment variable PORT
