@@ -303,6 +303,10 @@ export const AuthScreen = (): JSX.Element => {
               disabled={authMutation.isPending}
               className="w-full bg-[#4ade80] hover:bg-[#22c55e] text-white font-semibold py-3 rounded-md transition-colors"
               data-testid={isSignIn ? "button-sign-in" : "button-create-account"}
+              onClick={() => {
+                console.log('Button clicked! Form state:', form.formState);
+                console.log('Form errors:', form.formState.errors);
+              }}
             >
               {authMutation.isPending ? (isSignIn ? "Signing In..." : "Creating Account...") : (isSignIn ? "Sign In" : "Create Account")}
             </Button>
