@@ -43,7 +43,7 @@ UNCLEAR: Mumbled, unclear, contradictory, or missing audio/video`;
     const videoMimeType = supportedTypes.includes(mimeType) ? mimeType : "video/webm"; // Default to webm for browser recordings
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro",
+      model: "gemini-2.0-flash-exp",
       config: {
         systemInstruction: systemPrompt,
         responseMimeType: "application/json",
@@ -57,7 +57,7 @@ UNCLEAR: Mumbled, unclear, contradictory, or missing audio/video`;
             confidence: { type: "number" },
             reasoning: { type: "string" },
           },
-          required: ["decision", "confidence", "reasoning"],
+          required: ["decision", "confidence"],
         },
       },
       contents: [
@@ -103,7 +103,7 @@ Return JSON in this exact format:
 }`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro", 
+      model: "gemini-2.0-flash-exp", 
       config: {
         systemInstruction: systemPrompt,
         responseMimeType: "application/json",

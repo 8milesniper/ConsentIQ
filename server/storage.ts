@@ -778,9 +778,26 @@ export class PostgresStorage implements IStorage {
   }
 
   async createVideoAsset(asset: InsertVideoAsset): Promise<VideoAsset> {
+    // Map camelCase to snake_case for database
+    const dbAsset = {
+      filename: asset.filename,
+      original_name: asset.originalName,
+      mime_type: asset.mimeType,
+      file_size: asset.fileSize,
+      duration: asset.duration,
+      resolution: asset.resolution,
+      storage_key: asset.storageKey,
+      storage_url: asset.storageUrl,
+      is_encrypted: asset.isEncrypted,
+      checksum: asset.checksum,
+      transcript: asset.transcript,
+      transcription_confidence: asset.transcriptionConfidence,
+      transcribed_at: asset.transcribedAt
+    };
+    
     const { data, error } = await supabase
       .from("video_assets")
-      .insert([asset])
+      .insert([dbAsset])
       .select()
       .single();
     
