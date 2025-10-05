@@ -21,8 +21,10 @@ app.get('/api/env-check', (req, res) => {
     'JWT_SECRET', 
     'STRIPE_SECRET_KEY',
     'STRIPE_PRICE_ID',
+    'STRIPE_WEBHOOK_SECRET',
     'SUPABASE_URL',
-    'SUPABASE_SERVICE_ROLE_KEY'
+    'SUPABASE_SERVICE_ROLE_KEY',
+    'GEMINI_API_KEY'
   ];
   
   const envStatus = requiredEnvVars.reduce((acc, key) => {

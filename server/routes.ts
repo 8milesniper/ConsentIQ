@@ -1015,6 +1015,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // DIAGNOSTIC: Test Supabase bucket access
+  app.get("/api/test-supabase-buckets", async (req, res) => {
+    try {
+      const supabase = createClient(
+        process.env.SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+      
+      // List all buckets
+      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+      
+      // Test consent-videos bucket
+      const { data: consentFiles, error: consentError } = await supabase.storage
+        .from('consent-videos')
+        .list('', { limit: 1 });
+      
+      // Test profile-pictures bucket  
+      const { data: profileFiles, error: profileError } = await supabase.storage
+        .from('profile-pictures')
+        .list('', { limit: 1 });
+      
+      res.json({
+        buckets: buckets || [],
+        bucketsError: bucketsError?.message,
+        consentVideos: {
+          accessible: !consentError,
+          error: consentError?.message,
+          fileCount: consentFiles?.length || 0
+        },
+        profilePictures: {
+          accessible: !profileError,
+          error: profileError?.message,
+          fileCount: profileFiles?.length || 0
+        }
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Ask for Gemini API key if not provided
   if (!process.env.GEMINI_API_KEY) {
     console.warn("⚠️  GEMINI_API_KEY not found. Speech verification features will be limited.");
