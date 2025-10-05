@@ -258,56 +258,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // DEV ONLY: Reset password using storage layer
-  if (process.env.NODE_ENV === 'development') {
-    app.post("/api/dev/reset-password", async (req, res) => {
-      try {
-        const { email, newPassword } = req.body;
-        
-        // Find user first
-        const user = await storage.getUserByUsername(email);
-        if (!user) {
-          return res.status(404).json({ error: "User not found" });
-        }
-        
-        // Hash new password
-        const hashedPassword = await bcrypt.hash(newPassword, 12);
-        
-        // Update via storage updateUser method
-        await storage.updateUser(user.id, { password: hashedPassword });
-
-        res.json({ success: true, message: "Password updated for " + email });
-      } catch (err: any) {
-        console.error('Reset failed:', err);
-        res.status(500).json({ error: "Reset failed", details: err.message });
-      }
-    });
-  }
 
   // Login user
   app.post("/api/auth/login", async (req, res) => {
     try {
       const validatedData = loginSchema.parse(req.body);
       const { username, password } = validatedData;
-      
-      console.log('Login attempt for:', username);
-      console.log('Password received length:', password.length);
 
       // Find user
       const user = await storage.getUserByUsername(username);
       if (!user) {
-        console.log('User not found:', username);
         res.status(401).json({ error: "Invalid username or password" });
         return;
       }
-      
-      console.log('User found:', user.id);
-      console.log('Stored password hash starts with:', user.password.substring(0, 10));
 
       // Verify password
       const isValidPassword = await bcrypt.compare(password, user.password);
-      console.log('Password valid:', isValidPassword);
-      
       if (!isValidPassword) {
         res.status(401).json({ error: "Invalid username or password" });
         return;

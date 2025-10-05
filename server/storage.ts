@@ -417,11 +417,7 @@ export class PostgresStorage implements IStorage {
       .eq("username", username)
       .single();
     
-    if (error) {
-      console.error('getUserByUsername error for', username, ':', error);
-      return undefined;
-    }
-    console.log('getUserByUsername found user:', data?.id);
+    if (error) return undefined;
     return data as User;
   }
 
