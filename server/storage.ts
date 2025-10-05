@@ -407,7 +407,23 @@ export class PostgresStorage implements IStorage {
       .single();
     
     if (error) return undefined;
-    return data as User;
+    
+    // Map snake_case columns to camelCase properties
+    return {
+      id: data.id,
+      username: data.username,
+      password: data.password,
+      fullName: data.full_name,
+      phoneNumber: data.phone_number,
+      profilePicture: data.profile_picture,
+      stripeCustomerId: data.stripe_customer_id,
+      stripeSubscriptionId: data.stripe_subscription_id,
+      subscriptionStatus: data.subscription_status,
+      subscriptionPlan: data.subscription_plan,
+      subscriptionEndDate: data.subscription_end_date,
+      accountDeletionDate: data.account_deletion_date,
+      role: data.role
+    } as User;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
