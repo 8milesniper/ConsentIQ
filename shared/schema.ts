@@ -25,6 +25,8 @@ export const users = pgTable("users", {
 
 export const videoAssets = pgTable("video_assets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerUserId: varchar("owner_user_id").references(() => users.id),
+  ownerFullName: text("owner_full_name"),
   filename: text("filename").notNull(),
   originalName: text("original_name"),
   mimeType: text("mime_type").notNull(),
@@ -44,6 +46,7 @@ export const videoAssets = pgTable("video_assets", {
 export const consentSessions = pgTable("consent_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   initiatorUserId: varchar("initiator_user_id").notNull().references(() => users.id),
+  initiatorFullName: text("initiator_full_name"),
   participantName: text("participant_name").notNull(),
   participantPhone: text("participant_phone"),
   participantAge: integer("participant_age").notNull(),

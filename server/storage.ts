@@ -176,6 +176,11 @@ export class MemStorage implements IStorage {
   async createConsentSession(insertSession: InsertConsentSession): Promise<ConsentSession> {
     const id = randomUUID();
     const now = new Date();
+    
+    // Fetch user's full name for denormalized storage
+    const user = await this.getUser(insertSession.initiatorUserId);
+    const initiatorFullName = user?.fullName || null;
+    
     // Calculate retentionUntil from deleteAfterDays (default to 90 days if not provided)
     const deleteAfterDays = insertSession.deleteAfterDays || 90;
     const retentionUntil = new Date(now.getTime() + (deleteAfterDays * 24 * 60 * 60 * 1000));
@@ -183,6 +188,7 @@ export class MemStorage implements IStorage {
     const session: ConsentSession = {
       id,
       initiatorUserId: insertSession.initiatorUserId,
+      initiatorFullName,
       participantName: insertSession.participantName,
       participantPhone: insertSession.participantPhone || null,
       participantAge: insertSession.participantAge,
@@ -271,6 +277,21 @@ export class MemStorage implements IStorage {
     }
 
     this.consentSessions.set(id, updatedSession);
+    
+    // If a video asset is being linked, populate its owner fields from the consent session initiator
+    if (videoAssetId) {
+      const videoAsset = this.videoAssets.get(videoAssetId);
+      const user = await this.getUser(session.initiatorUserId);
+      if (videoAsset && user) {
+        const updatedAsset: VideoAsset = {
+          ...videoAsset,
+          ownerUserId: session.initiatorUserId,
+          ownerFullName: user.fullName
+        };
+        this.videoAssets.set(videoAssetId, updatedAsset);
+      }
+    }
+    
     return updatedSession;
   }
 
@@ -279,6 +300,8 @@ export class MemStorage implements IStorage {
     const id = randomUUID();
     const videoAsset: VideoAsset = {
       id,
+      ownerUserId: null,
+      ownerFullName: null,
       filename: insertAsset.filename,
       originalName: insertAsset.originalName || null,
       mimeType: insertAsset.mimeType,
@@ -415,6 +438,8 @@ function mapUserFromDb(data: any): User {
 function mapVideoAssetFromDb(data: any): VideoAsset {
   return {
     id: data.id,
+    ownerUserId: data.owner_user_id,
+    ownerFullName: data.owner_full_name,
     filename: data.filename,
     originalName: data.original_name,
     mimeType: data.mime_type,
@@ -437,6 +462,7 @@ function mapConsentSessionFromDb(data: any): ConsentSession {
     id: data.id,
     qrCodeId: data.qr_code_id,
     initiatorUserId: data.initiator_user_id,
+    initiatorFullName: data.initiator_full_name,
     participantName: data.participant_name,
     participantPhone: data.participant_phone,
     participantAge: data.participant_age,
@@ -646,6 +672,10 @@ export class PostgresStorage implements IStorage {
   }
 
   async createConsentSession(session: InsertConsentSession): Promise<ConsentSession> {
+    // Fetch user's full name for denormalized storage
+    const user = await this.getUser(session.initiatorUserId);
+    const initiatorFullName = user?.fullName || null;
+    
     // Calculate retention date from deleteAfterDays
     const retentionUntil = new Date(Date.now() + ((session.deleteAfterDays || 90) * 24 * 60 * 60 * 1000));
     
@@ -653,6 +683,7 @@ export class PostgresStorage implements IStorage {
     const dbSession = {
       qr_code_id: session.qrCodeId,
       initiator_user_id: session.initiatorUserId,
+      initiator_full_name: initiatorFullName,
       participant_name: session.participantName,
       participant_phone: session.participantPhone || null,
       participant_age: session.participantAge,
@@ -732,6 +763,21 @@ export class PostgresStorage implements IStorage {
       .single();
     
     if (error) return undefined;
+    
+    // If a video asset is being linked, populate its owner fields from the consent session initiator
+    if (videoAssetId && data.initiator_user_id) {
+      const user = await this.getUser(data.initiator_user_id);
+      if (user) {
+        await supabase
+          .from("video_assets")
+          .update({
+            owner_user_id: data.initiator_user_id,
+            owner_full_name: user.fullName
+          })
+          .eq("id", videoAssetId);
+      }
+    }
+    
     return mapConsentSessionFromDb(data);
   }
 
