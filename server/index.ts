@@ -183,11 +183,9 @@ app.use((req, res, next) => {
     }
 
     // ALWAYS serve the app on the port specified in the environment variable PORT
-    // In production deployments: use port 80 (deployment health checks expect this)
-    // In development: use port 5000
+    // Replit maps local port (default 5000) to external port 80 via .replit configuration
+    const port = parseInt(process.env.PORT || '5000', 10);
     const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT === '1';
-    const defaultPort = isProduction ? '80' : '5000';
-    const port = parseInt(process.env.PORT || defaultPort, 10);
     
     server.listen(port, "0.0.0.0", () => {
       log(`serving on port ${port} (${isProduction ? 'production' : 'development'} mode)`);
