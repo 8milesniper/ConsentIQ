@@ -1018,40 +1018,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // DIAGNOSTIC: Test Supabase bucket access
   app.get("/api/test-supabase-buckets", async (req, res) => {
     try {
+      const supabaseUrl = process.env.SUPABASE_URL!;
       const supabase = createClient(
-        process.env.SUPABASE_URL!,
+        supabaseUrl,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
       );
       
+      console.log(`🔍 Testing Supabase connection to: ${supabaseUrl}`);
+      
       // List all buckets
       const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+      
+      if (bucketsError) {
+        console.error('❌ Buckets list error:', JSON.stringify(bucketsError, null, 2));
+      } else {
+        console.log('✅ Buckets list success:', buckets?.map(b => b.name));
+      }
       
       // Test consent-videos bucket
       const { data: consentFiles, error: consentError } = await supabase.storage
         .from('consent-videos')
         .list('', { limit: 1 });
       
+      if (consentError) {
+        console.error('❌ Consent videos error:', JSON.stringify(consentError, null, 2));
+      }
+      
       // Test profile-pictures bucket  
       const { data: profileFiles, error: profileError } = await supabase.storage
         .from('profile-pictures')
         .list('', { limit: 1 });
       
+      if (profileError) {
+        console.error('❌ Profile pictures error:', JSON.stringify(profileError, null, 2));
+      }
+      
       res.json({
+        supabaseUrl,
         buckets: buckets || [],
-        bucketsError: bucketsError?.message,
+        bucketsError: bucketsError?.message || (bucketsError ? JSON.stringify(bucketsError) : null),
         consentVideos: {
           accessible: !consentError,
-          error: consentError?.message,
+          error: consentError?.message || (consentError ? JSON.stringify(consentError) : null),
           fileCount: consentFiles?.length || 0
         },
         profilePictures: {
           accessible: !profileError,
-          error: profileError?.message,
+          error: profileError?.message || (profileError ? JSON.stringify(profileError) : null),
           fileCount: profileFiles?.length || 0
         }
       });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error('❌ Supabase test exception:', error);
+      res.status(500).json({ error: error.message, stack: error.stack });
     }
   });
 
