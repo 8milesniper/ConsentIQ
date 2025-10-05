@@ -33,6 +33,7 @@ export interface IStorage {
   updateConsentSessionStatus(id: string, status: "pending" | "granted" | "denied" | "revoked", videoAssetId?: string): Promise<ConsentSession | undefined>;
   updateConsentVerification(id: string, buttonChoice: "granted" | "denied", aiAnalysisResult: string, hasAudioMismatch: boolean): Promise<ConsentSession | undefined>;
   updateAiAnalysisResult(id: string, aiAnalysisResult: string): Promise<ConsentSession | undefined>;
+  updateConsentTranscript(id: string, aiTranscript: string): Promise<ConsentSession | undefined>;
   
   // Video asset management  
   createVideoAsset(asset: InsertVideoAsset): Promise<VideoAsset>;
@@ -353,6 +354,19 @@ export class MemStorage implements IStorage {
     return updatedSession;
   }
 
+  async updateConsentTranscript(id: string, aiTranscript: string): Promise<ConsentSession | undefined> {
+    const session = this.consentSessions.get(id);
+    if (!session) return undefined;
+
+    const updatedSession: ConsentSession = {
+      ...session,
+      aiTranscript,
+    };
+
+    this.consentSessions.set(id, updatedSession);
+    return updatedSession;
+  }
+
   // Upload URL generation (mock implementation for development)
   async generateUploadUrl(filename: string, mimeType: string): Promise<{ uploadUrl: string; storageKey: string }> {
     // In production, this would generate a pre-signed URL to object storage
@@ -600,6 +614,18 @@ export class PostgresStorage implements IStorage {
     const { data, error } = await supabase
       .from("consent_sessions")
       .update({ ai_analysis_result: aiAnalysisResult })
+      .eq("id", id)
+      .select()
+      .single();
+    
+    if (error) return undefined;
+    return data as ConsentSession;
+  }
+
+  async updateConsentTranscript(id: string, aiTranscript: string): Promise<ConsentSession | undefined> {
+    const { data, error } = await supabase
+      .from("consent_sessions")
+      .update({ ai_transcript: aiTranscript })
       .eq("id", id)
       .select()
       .single();

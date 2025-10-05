@@ -755,6 +755,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         scaledTranscriptionConfidence
       );
 
+      // Also store transcript in consent session for easy access
+      await storage.updateConsentTranscript(
+        sessionId,
+        transcriptionResult.transcript
+      );
+
       // Analyze video with Gemini AI for consent decision
       const analysisResult = await analyzeConsentVideo(videoPath, req.file.mimetype);
       const scaledAnalysisConfidence = scaleConfidence(analysisResult.confidence);
