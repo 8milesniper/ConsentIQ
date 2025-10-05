@@ -1,13 +1,20 @@
 import { createClient } from '@supabase/supabase-js';
 
-if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('Missing required environment variables: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY');
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  const missingVars = [];
+  if (!supabaseUrl) missingVars.push('SUPABASE_URL');
+  if (!supabaseKey) missingVars.push('SUPABASE_SERVICE_ROLE_KEY');
+  
+  throw new Error(
+    `Invalid supabaseUrl: Must be a valid HTTP or HTTPS URL - the ${missingVars.join(' and ')} environment variable${missingVars.length > 1 ? 's are' : ' is'} missing or empty. ` +
+    `Please add ${missingVars.length > 1 ? 'these secrets' : 'this secret'} to your deployment environment variables in the Replit Deployment settings.`
+  );
 }
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function uploadConsentVideo(fileBuffer: Buffer, filename: string): Promise<string> {
   // Upload WITHOUT upsert to prevent overwriting existing videos
