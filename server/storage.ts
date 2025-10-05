@@ -2,20 +2,11 @@ import { type User, type SafeUser, type InsertUser, type ConsentSession, type In
 import { randomUUID } from "crypto";
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.SUPABASE_URL?.trim() || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || '';
-
-console.log('SUPABASE_URL value:', JSON.stringify(supabaseUrl));
-console.log('SUPABASE_URL length:', supabaseUrl.length);
-console.log('SUPABASE_KEY exists:', !!supabaseKey);
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
-  throw new Error(`Missing environment variables - SUPABASE_URL: ${!!supabaseUrl}, SUPABASE_SERVICE_ROLE_KEY: ${!!supabaseKey}`);
-}
-
-// Validate URL format before passing to Supabase client
-if (!supabaseUrl.startsWith('http://') && !supabaseUrl.startsWith('https://')) {
-  throw new Error(`Invalid SUPABASE_URL format: "${supabaseUrl}" - must start with http:// or https://`);
+  throw new Error('Missing required environment variables: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY');
 }
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
