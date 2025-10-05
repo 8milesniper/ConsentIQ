@@ -258,6 +258,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // DEV ONLY: Reset password
+  if (process.env.NODE_ENV === 'development') {
+    app.post("/api/dev/reset-password", async (req, res) => {
+      try {
+        const { email, newPassword } = req.body;
+        const hashedPassword = await bcrypt.hash(newPassword, 12);
+        
+        const user = await storage.getUserByUsername(email);
+        if (!user) {
+          return res.status(404).json({ error: "User not found" });
+        }
+
+        const { data, error } = await supabase
+          .from("users")
+          .update({ password: hashedPassword })
+          .eq("username", email)
+          .select()
+          .single();
+
+        if (error) {
+          return res.status(500).json({ error: "Password reset failed" });
+        }
+
+        res.json({ success: true, message: "Password updated" });
+      } catch (err) {
+        res.status(500).json({ error: "Reset failed" });
+      }
+    });
+  }
+
   // Login user
   app.post("/api/auth/login", async (req, res) => {
     try {
