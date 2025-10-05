@@ -57,6 +57,7 @@ export const consentSessions = pgTable("consent_sessions", {
   deleteAfterDays: integer("delete_after_days").notNull().default(90), // configurable retention period
   verificationStatus: verificationStatusEnum("verification_status").notNull().default("pending"),
   aiAnalysisResult: text("ai_analysis_result"), // CONSENT_GRANTED, CONSENT_DENIED, UNCLEAR
+  aiTranscript: text("ai_transcript"), // Full transcript text from AI speech-to-text
   hasAudioMismatch: boolean("has_audio_mismatch").default(false), // true if audio doesn't match button choice
   verifiedAt: timestamp("verified_at"),
   buttonChoice: text("button_choice"), // "granted" or "denied" - what user actually clicked
