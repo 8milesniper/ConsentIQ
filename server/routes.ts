@@ -191,13 +191,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { username, password, fullName, phoneNumber, profilePicture } = req.body;
 
-      const supabaseClient = createClient(
-        process.env.SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      );
+      // Check if user already exists
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        res.status(400).json({ error: "Username already exists" });
+        return;
+      }
 
       const hashedPassword = await bcrypt.hash(password, 12);
-      const userId = randomUUID();
+
+      // Create user using storage layer (PostgreSQL)
+      const newUser = await storage.createUser({
+        username,
+        password: hashedPassword,
+        fullName: fullName || null,
+        phoneNumber: phoneNumber || null,
+        profilePicture: profilePicture || null,
+      });
 
       let profilePictureUrl: string | null = null;
 
@@ -209,7 +219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const buffer = Buffer.from(base64Data, 'base64');
           
           // Upload to Supabase Storage
-          profilePictureUrl = await uploadProfilePicture(buffer, `${userId}.jpg`);
+          profilePictureUrl = await uploadProfilePicture(buffer, `${newUser.id}.jpg`);
           console.log('Profile picture uploaded:', profilePictureUrl);
         } catch (uploadError) {
           console.error('Profile picture upload failed:', uploadError);
@@ -217,28 +227,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const { data, error } = await supabaseClient
-        .from("users")
-        .insert([
-          {
-            id: userId,
-            username: username,
-            password: hashedPassword,
-            full_name: fullName,
-            phone_number: phoneNumber,
-            profile_picture_url: profilePictureUrl
-          }
-        ])
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Supabase insert error:", error.message);
-        return res.status(400).json({ error: error.message });
+      // Update profile picture URL if uploaded
+      if (profilePictureUrl) {
+        await storage.updateUserProfilePictureUrl(newUser.id, profilePictureUrl);
       }
 
       const token = jwt.sign(
-        { userId: data.id, username: data.username },
+        { userId: newUser.id, username: newUser.username },
         SECRET,
         { expiresIn: "7d" }
       );
@@ -251,7 +246,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         path: '/',
       });
 
-      res.status(201).json({ success: true, user: data });
+      res.status(201).json({ success: true, user: { id: newUser.id, username: newUser.username, fullName: newUser.fullName } });
     } catch (err: any) {
       console.error("Signup handler error:", err);
       res.status(500).json({ error: "Internal server error" });
