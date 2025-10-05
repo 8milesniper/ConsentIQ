@@ -125,6 +125,8 @@ export const AuthScreen = (): JSX.Element => {
   });
 
   const onSubmit = (data: CreateAccountData | SignInData) => {
+    console.log('Form submitted:', { isSignIn, data });
+    
     // Require profile picture for registration (not for sign-in)
     if (!isSignIn && !profileImage) {
       toast({
@@ -134,6 +136,8 @@ export const AuthScreen = (): JSX.Element => {
       });
       return;
     }
+    
+    console.log('About to call authMutation.mutate');
     authMutation.mutate(data);
   };
 
