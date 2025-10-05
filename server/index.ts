@@ -1,18 +1,18 @@
-// Load environment variables from .env file FIRST (before other imports)
-import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
-// Load .env from project root (parent directory) - ES module compatible
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.join(__dirname, '..', '.env') });
-
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import cookieParser from "cookie-parser";
 
 const app = express();
+
+// Health check endpoint at root (for deployment health checks)
+app.get('/', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    service: 'ConsentIQ',
+    timestamp: new Date().toISOString() 
+  });
+});
 
 // Environment check endpoint (for debugging deployment issues)
 app.get('/api/env-check', (req, res) => {
