@@ -641,7 +641,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Video upload endpoint with SUPABASE STORAGE
+  // Generate signed upload URL for direct browser-to-Supabase upload (bypasses IPv6 issue)
+  app.post("/api/get-upload-url", async (req, res) => {
+    try {
+      const { filename, contentType, sessionId, videoAssetId } = req.body;
+
+      if (!filename || !contentType || !sessionId || !videoAssetId) {
+        res.status(400).json({ error: "Missing required fields: filename, contentType, sessionId, videoAssetId" });
+        return;
+      }
+
+      // Verify video asset exists
+      const videoAsset = await storage.getVideoAsset(videoAssetId);
+      if (!videoAsset) {
+        res.status(404).json({ error: "Video asset not found" });
+        return;
+      }
+
+      // Generate unique filename
+      const uniqueFilename = `session-${sessionId}-${Date.now()}.webm`;
+
+      // Create signed upload URL using Supabase client
+      const supabaseClient = createClient(
+        process.env.SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+
+      const { data, error } = await supabaseClient.storage
+        .from("consent-videos")
+        .createSignedUploadUrl(uniqueFilename, {
+          upsert: false, // Don't overwrite existing videos
+        });
+
+      if (error) {
+        console.error("Signed URL generation error:", error);
+        res.status(500).json({ error: "Failed to generate upload URL", details: error.message });
+        return;
+      }
+
+      console.log(`✅ Generated signed upload URL for session ${sessionId}`);
+
+      res.json({
+        uploadUrl: data.signedUrl,
+        path: data.path,
+        token: data.token,
+        videoAssetId,
+      });
+    } catch (err: any) {
+      console.error("Get upload URL error:", err);
+      res.status(500).json({ error: err.message || "Failed to generate upload URL" });
+    }
+  });
+
+  // Confirm upload and update database (called after browser uploads to Supabase)
+  app.post("/api/confirm-upload", async (req, res) => {
+    try {
+      const { path, videoAssetId } = req.body;
+
+      if (!path || !videoAssetId) {
+        res.status(400).json({ error: "Missing required fields: path, videoAssetId" });
+        return;
+      }
+
+      // Update video asset with Supabase storage path
+      await storage.updateVideoAssetUrl(videoAssetId, path);
+      console.log(`✅ DATABASE UPDATED: Video asset ${videoAssetId} -> ${path}`);
+
+      res.json({ success: true, path });
+    } catch (err: any) {
+      console.error("Confirm upload error:", err);
+      res.status(500).json({ error: err.message || "Failed to confirm upload" });
+    }
+  });
+
+  // Video upload endpoint with SUPABASE STORAGE (LEGACY - prefer signed URL approach)
   app.post("/api/upload", memoryUpload.single("video"), async (req, res) => {
     try {
       if (!req.file) {

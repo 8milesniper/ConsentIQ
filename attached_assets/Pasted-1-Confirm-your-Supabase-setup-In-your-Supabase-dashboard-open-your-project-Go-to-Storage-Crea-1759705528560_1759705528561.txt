@@ -1,0 +1,122 @@
+1. Confirm your Supabase setup
+
+In your Supabase dashboard, open your project.
+
+Go to Storage → Create Bucket → name it videos.
+
+In that bucket, click Policies → New Policy.
+
+Name: allow_authenticated_uploads
+
+Action: INSERT
+
+Rule: auth.role() = 'authenticated'
+
+Save the policy.
+
+This ensures only logged-in users can upload.
+
+2. Add environment variables in Replit
+
+Go to Secrets (lock icon) in your Replit project and make sure these two exist exactly:
+
+SUPABASE_URL=https://fvnvmdhvtbvtcfnrobsm.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_actual_service_role_key_from_supabase
+
+
+If both already exist and match, you’re set.
+
+3. Create or replace index.js in Replit
+
+This file creates a backend endpoint that issues a signed upload URL.
+Paste this entire code:
+
+import express from "express";
+import { createClient } from "@supabase/supabase-js";
+import cors from "cors";
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// Connect to Supabase
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+// Generate signed URL for video upload
+app.post("/api/get-upload-url", async (req, res) => {
+  try {
+    const { filename, contentType } = req.body;
+
+    const { data, error } = await supabase
+      .storage
+      .from("videos")
+      .createSignedUploadUrl(filename, {
+        contentType,
+        upsert: true,
+      });
+
+    if (error) {
+      console.error("Supabase error:", error.message);
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.json({
+      uploadUrl: data.signedUrl,
+      path: data.path,
+    });
+  } catch (err) {
+    console.error("Server error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.listen(3000, () => console.log("✅ Replit server running on port 3000"));
+
+4. Add frontend upload function
+
+This code runs in your browser app.
+It asks Replit for a signed URL, then uploads the video file directly to Supabase (bypassing Replit’s IPv6 problem).
+
+async function uploadVideo(file) {
+  const res = await fetch("https://your-replit-project-url.repl.co/api/get-upload-url", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      filename: file.name,
+      contentType: file.type,
+    }),
+  });
+
+  const { uploadUrl, path, error } = await res.json();
+  if (error) throw new Error(error);
+
+  const uploadRes = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": file.type },
+    body: file,
+  });
+
+  if (!uploadRes.ok) throw new Error("Upload failed");
+
+  console.log("✅ Video uploaded successfully:", path);
+  return path;
+}
+
+
+Replace https://your-replit-project-url.repl.co with your actual Replit web server URL (click “Open in new tab” after running your Replit project to get it).
+
+5. Test
+
+Run your Replit project.
+
+Open your frontend or console where the uploadVideo() function is available.
+
+Select a video file and call:
+
+uploadVideo(file)
+
+
+Check Supabase → Storage → videos to confirm the upload.

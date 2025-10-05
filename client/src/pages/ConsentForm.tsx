@@ -286,25 +286,56 @@ export const ConsentForm = (): JSX.Element => {
         isEncrypted: true,
       });
       
-      // Upload video to Supabase using multipart form
-      const formData = new FormData();
-      formData.append('video', videoBlob, filename);
-      formData.append('sessionId', session.id);
-      formData.append('videoAssetId', videoAsset.id);
-
-      const uploadResponse = await fetch('/api/upload', {
+      // Get signed upload URL from backend
+      const urlResponse = await fetch('/api/get-upload-url', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename,
+          contentType: baseMimeType,
+          sessionId: session.id,
+          videoAssetId: videoAsset.id,
+        }),
         credentials: 'include'
       });
 
-      const uploadResult = await uploadResponse.json();
-      
-      if (!uploadResponse.ok) {
-        throw new Error(uploadResult.error || 'Video upload to cloud storage failed');
+      if (!urlResponse.ok) {
+        const urlError = await urlResponse.json();
+        throw new Error(urlError.error || 'Failed to get upload URL');
       }
-      
-      console.log('Upload success:', uploadResult);
+
+      const { uploadUrl, path } = await urlResponse.json();
+      console.log('Got signed URL, uploading directly to Supabase...');
+
+      // Upload directly to Supabase using signed URL (bypasses Replit IPv6 issue)
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': baseMimeType },
+        body: videoBlob,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Direct upload to Supabase failed');
+      }
+
+      console.log('✅ Video uploaded directly to Supabase');
+
+      // Confirm upload with backend to update database
+      const confirmResponse = await fetch('/api/confirm-upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          path,
+          videoAssetId: videoAsset.id,
+        }),
+        credentials: 'include'
+      });
+
+      if (!confirmResponse.ok) {
+        throw new Error('Failed to confirm upload');
+      }
+
+      console.log('✅ Upload confirmed in database');
 
       // Step 2: Process video with AI analysis
       const aiFormData = new FormData();
