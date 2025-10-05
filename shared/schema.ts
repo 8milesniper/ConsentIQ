@@ -88,7 +88,7 @@ export const insertVideoAssetSchema = createInsertSchema(videoAssets).omit({
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
-export type SafeUser = Pick<User, 'id' | 'fullName' | 'profilePicture' | 'phoneNumber'>; // No password or username
+export type SafeUser = Pick<User, 'id' | 'fullName' | 'profilePicture' | 'profilePictureUrl' | 'phoneNumber'>; // No password or username
 export type InsertConsentSession = z.infer<typeof insertConsentSessionSchema>;
 export type ConsentSession = typeof consentSessions.$inferSelect;
 export type InsertVideoAsset = z.infer<typeof insertVideoAssetSchema>;

@@ -189,7 +189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register new user
   app.post("/api/auth/register", async (req, res) => {
     try {
-      const { username, password, fullName, phoneNumber } = req.body;
+      const { username, password, fullName, phoneNumber, profilePicture } = req.body;
 
       const supabaseClient = createClient(
         process.env.SUPABASE_URL!,
@@ -197,16 +197,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       const hashedPassword = await bcrypt.hash(password, 12);
+      const userId = randomUUID();
+
+      let profilePictureUrl: string | null = null;
+
+      // Upload profile picture to Supabase Storage if provided
+      if (profilePicture && profilePicture.startsWith('data:image/')) {
+        try {
+          // Convert base64 to buffer
+          const base64Data = profilePicture.replace(/^data:image\/\w+;base64,/, '');
+          const buffer = Buffer.from(base64Data, 'base64');
+          
+          // Upload to Supabase Storage
+          profilePictureUrl = await uploadProfilePicture(buffer, `${userId}.jpg`);
+          console.log('Profile picture uploaded:', profilePictureUrl);
+        } catch (uploadError) {
+          console.error('Profile picture upload failed:', uploadError);
+          // Continue registration even if upload fails - picture is optional
+        }
+      }
 
       const { data, error } = await supabaseClient
         .from("users")
         .insert([
           {
-            id: randomUUID(),
+            id: userId,
             username: username,
             password: hashedPassword,
             full_name: fullName,
-            phone_number: phoneNumber
+            phone_number: phoneNumber,
+            profile_picture_url: profilePictureUrl
           }
         ])
         .select()

@@ -453,10 +453,10 @@ export const ConsentForm = (): JSX.Element => {
         <div className="flex-1 bg-white rounded-t-3xl p-6">
           <div className="text-center mb-8">
             <div className="w-24 h-24 mx-auto mb-4 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
-              {/* Initiator's actual profile picture */}
-              {session?.initiator?.profilePicture ? (
+              {/* Initiator's actual profile picture - prefer URL over base64 */}
+              {session?.initiator?.profilePictureUrl || session?.initiator?.profilePicture ? (
                 <img 
-                  src={session.initiator.profilePicture} 
+                  src={(session.initiator.profilePictureUrl || session.initiator.profilePicture) || undefined} 
                   alt={session.initiator.fullName || "User"} 
                   className="w-full h-full object-cover"
                   data-testid="img-initiator-profile"

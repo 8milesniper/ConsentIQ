@@ -182,6 +182,7 @@ export class MemStorage implements IStorage {
       retentionUntil,
       verificationStatus: "pending",
       aiAnalysisResult: null,
+      aiTranscript: null,
       hasAudioMismatch: false,
       verifiedAt: null,
       buttonChoice: null,
@@ -201,6 +202,7 @@ export class MemStorage implements IStorage {
       id: initiatorUser.id,
       fullName: initiatorUser.fullName,
       profilePicture: initiatorUser.profilePicture,
+      profilePictureUrl: initiatorUser.profilePictureUrl,
       phoneNumber: initiatorUser.phoneNumber
     } : undefined;
     
@@ -223,6 +225,7 @@ export class MemStorage implements IStorage {
       id: initiatorUser.id,
       fullName: initiatorUser.fullName,
       profilePicture: initiatorUser.profilePicture,
+      profilePictureUrl: initiatorUser.profilePictureUrl,
       phoneNumber: initiatorUser.phoneNumber
     } : undefined;
     
