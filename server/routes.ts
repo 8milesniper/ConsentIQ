@@ -258,19 +258,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // DEV ONLY: Reset password
+  // DEV ONLY: Reset password (bypasses getUserByUsername)
   if (process.env.NODE_ENV === 'development') {
     app.post("/api/dev/reset-password", async (req, res) => {
       try {
         const { email, newPassword } = req.body;
         const hashedPassword = await bcrypt.hash(newPassword, 12);
         
-        const user = await storage.getUserByUsername(email);
-        if (!user) {
-          return res.status(404).json({ error: "User not found" });
-        }
+        const supabaseClient = createClient(
+          process.env.SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
 
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
           .from("users")
           .update({ password: hashedPassword })
           .eq("username", email)
@@ -278,12 +278,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .single();
 
         if (error) {
-          return res.status(500).json({ error: "Password reset failed" });
+          console.error('Password reset error:', error);
+          return res.status(500).json({ error: "Password reset failed", details: error.message });
         }
 
-        res.json({ success: true, message: "Password updated" });
-      } catch (err) {
-        res.status(500).json({ error: "Reset failed" });
+        if (!data) {
+          return res.status(404).json({ error: "User not found" });
+        }
+
+        res.json({ success: true, message: "Password updated for " + data.username });
+      } catch (err: any) {
+        console.error('Reset failed:', err);
+        res.status(500).json({ error: "Reset failed", details: err.message });
       }
     });
   }
