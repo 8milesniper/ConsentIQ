@@ -19,6 +19,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUserPassword(userId: string, hashedPassword: string): Promise<User | undefined>;
   updateUserProfilePictureUrl(userId: string, profilePictureUrl: string): Promise<User | undefined>;
   updateUserStripeInfo(userId: string, stripeCustomerId: string, stripeSubscriptionId: string, subscriptionPlan: string, subscriptionStatus: string): Promise<User | undefined>;
   updateUserSubscriptionStatus(userId: string, status: string): Promise<User | undefined>;
@@ -437,6 +438,21 @@ export class PostgresStorage implements IStorage {
       console.error('Exception stack:', err.stack);
       throw new Error(`Database insert failed: ${err}`);
     }
+  }
+
+  async updateUserPassword(userId: string, hashedPassword: string): Promise<User | undefined> {
+    const { data, error } = await supabase
+      .from("users")
+      .update({ password: hashedPassword })
+      .eq("id", userId)
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('updateUserPassword error:', error);
+      return undefined;
+    }
+    return data as User;
   }
 
   async updateUserProfilePictureUrl(userId: string, profilePictureUrl: string): Promise<User | undefined> {

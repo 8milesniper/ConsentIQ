@@ -258,35 +258,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // DEV ONLY: Reset password (bypasses getUserByUsername)
+  // DEV ONLY: Reset password using storage layer
   if (process.env.NODE_ENV === 'development') {
     app.post("/api/dev/reset-password", async (req, res) => {
       try {
         const { email, newPassword } = req.body;
-        const hashedPassword = await bcrypt.hash(newPassword, 12);
         
-        const supabaseClient = createClient(
-          process.env.SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!
-        );
-
-        const { data, error } = await supabaseClient
-          .from("users")
-          .update({ password: hashedPassword })
-          .eq("username", email)
-          .select()
-          .single();
-
-        if (error) {
-          console.error('Password reset error:', error);
-          return res.status(500).json({ error: "Password reset failed", details: error.message });
-        }
-
-        if (!data) {
+        // Find user first
+        const user = await storage.getUserByUsername(email);
+        if (!user) {
           return res.status(404).json({ error: "User not found" });
         }
+        
+        // Hash new password
+        const hashedPassword = await bcrypt.hash(newPassword, 12);
+        
+        // Update via storage updateUser method
+        await storage.updateUser(user.id, { password: hashedPassword });
 
-        res.json({ success: true, message: "Password updated for " + data.username });
+        res.json({ success: true, message: "Password updated for " + email });
       } catch (err: any) {
         console.error('Reset failed:', err);
         res.status(500).json({ error: "Reset failed", details: err.message });
