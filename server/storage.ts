@@ -585,19 +585,49 @@ export class PostgresStorage implements IStorage {
     // Calculate retention date from deleteAfterDays
     const retentionUntil = new Date(Date.now() + ((session.deleteAfterDays || 90) * 24 * 60 * 60 * 1000));
     
-    const sessionWithRetention = {
-      ...session,
+    // Map camelCase to snake_case for database
+    const dbSession = {
+      qr_code_id: session.qrCodeId,
+      initiator_user_id: session.initiatorUserId,
+      participant_name: session.participantName,
+      participant_phone: session.participantPhone || null,
+      participant_age: session.participantAge,
+      consent_status: session.consentStatus || 'pending',
+      video_asset_id: session.videoAssetId || null,
+      delete_after_days: session.deleteAfterDays || 90,
       retention_until: retentionUntil.toISOString()
     };
     
     const { data, error } = await supabase
       .from("consent_sessions")
-      .insert([sessionWithRetention])
+      .insert([dbSession])
       .select()
       .single();
     
     if (error) throw error;
-    return data as ConsentSession;
+    
+    // Map snake_case back to camelCase for return
+    return {
+      id: data.id,
+      qrCodeId: data.qr_code_id,
+      initiatorUserId: data.initiator_user_id,
+      participantName: data.participant_name,
+      participantPhone: data.participant_phone,
+      participantAge: data.participant_age,
+      consentStatus: data.consent_status,
+      videoAssetId: data.video_asset_id,
+      deleteAfterDays: data.delete_after_days,
+      sessionStartTime: data.session_start_time,
+      consentGrantedTime: data.consent_granted_time,
+      consentRevokedTime: data.consent_revoked_time,
+      retentionUntil: data.retention_until,
+      verificationStatus: data.verification_status,
+      aiAnalysisResult: data.ai_analysis_result,
+      aiTranscript: data.ai_transcript,
+      hasAudioMismatch: data.has_audio_mismatch,
+      verifiedAt: data.verified_at,
+      buttonChoice: data.button_choice
+    } as ConsentSession;
   }
 
   async getConsentSession(id: string): Promise<ConsentSession | undefined> {

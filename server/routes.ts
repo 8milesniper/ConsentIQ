@@ -532,6 +532,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         res.status(400).json({ error: "Invalid session data", details: error.errors });
       } else {
+        console.error("Failed to create consent session:", error);
         res.status(500).json({ error: "Failed to create consent session" });
       }
     }
