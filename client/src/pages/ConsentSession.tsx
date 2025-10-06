@@ -81,7 +81,7 @@ export const ConsentSession = (): JSX.Element => {
       recipientFullName: "Partner", // This would be dynamic in real app
       verifiedOver18: true, // This would be dynamic in real app  
       consentStatus: "pending" as const,
-      deleteAfterDays: 90,
+      deleteAfterDays: null, // null = keep indefinitely
     };
 
     createSessionMutation.mutate(sessionData);

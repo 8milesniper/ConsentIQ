@@ -57,8 +57,8 @@ export const consentSessions = pgTable("consent_sessions", {
   consentRevokedTime: timestamp("consent_revoked_time"),
   qrCodeId: text("qr_code_id").notNull(),
   videoAssetId: varchar("video_asset_id").references(() => videoAssets.id),
-  retentionUntil: timestamp("retention_until").notNull(), // must be calculated from deleteAfterDays
-  deleteAfterDays: integer("delete_after_days").notNull().default(90), // configurable retention period
+  retentionUntil: timestamp("retention_until"), // null = keep indefinitely
+  deleteAfterDays: integer("delete_after_days"), // null = keep indefinitely, otherwise days until deletion
   verificationStatus: verificationStatusEnum("verification_status").notNull().default("pending"),
   aiAnalysisResult: text("ai_analysis_result"), // CONSENT_GRANTED, CONSENT_DENIED, UNCLEAR
   aiTranscript: text("ai_transcript"), // Full transcript text from AI speech-to-text

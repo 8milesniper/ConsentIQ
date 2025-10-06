@@ -182,9 +182,9 @@ export class MemStorage implements IStorage {
     const initiatorFullName = user?.fullName || null;
     const initiatorProfilePictureUrl = user?.profilePictureUrl || null;
     
-    // Calculate retentionUntil from deleteAfterDays (default to 90 days if not provided)
-    const deleteAfterDays = insertSession.deleteAfterDays || 90;
-    const retentionUntil = new Date(now.getTime() + (deleteAfterDays * 24 * 60 * 60 * 1000));
+    // Calculate retentionUntil from deleteAfterDays (null = keep indefinitely)
+    const deleteAfterDays = insertSession.deleteAfterDays ?? null;
+    const retentionUntil = deleteAfterDays ? new Date(now.getTime() + (deleteAfterDays * 24 * 60 * 60 * 1000)) : null;
     
     const session: ConsentSession = {
       id,
@@ -680,8 +680,9 @@ export class PostgresStorage implements IStorage {
     const initiatorFullName = user?.fullName || null;
     const initiatorProfilePictureUrl = user?.profilePictureUrl || null;
     
-    // Calculate retention date from deleteAfterDays
-    const retentionUntil = new Date(Date.now() + ((session.deleteAfterDays || 90) * 24 * 60 * 60 * 1000));
+    // Calculate retention date from deleteAfterDays (null = keep indefinitely)
+    const deleteAfterDays = session.deleteAfterDays ?? null;
+    const retentionUntil = deleteAfterDays ? new Date(Date.now() + (deleteAfterDays * 24 * 60 * 60 * 1000)) : null;
     
     // Map camelCase to snake_case for database
     const dbSession = {
@@ -694,8 +695,8 @@ export class PostgresStorage implements IStorage {
       verified_over_18: session.verifiedOver18,
       consent_status: session.consentStatus || 'pending',
       video_asset_id: session.videoAssetId || null,
-      delete_after_days: session.deleteAfterDays || 90,
-      retention_until: retentionUntil.toISOString()
+      delete_after_days: deleteAfterDays,
+      retention_until: retentionUntil ? retentionUntil.toISOString() : null
     };
     
     const { data, error } = await supabase
