@@ -1170,6 +1170,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // VERIFICATION: Test new upload and linking schema
+  app.get("/api/verify-video-schema", async (req, res) => {
+    try {
+      const supabaseUrl = process.env.SUPABASE_URL!;
+      const supabase = createClient(
+        supabaseUrl,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+
+      const { data, error } = await supabase
+        .from('video_assets')
+        .select('id, owner_user_id, owner_full_name, created_at')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (error) {
+        console.error('❌ Supabase query failed:', error.message);
+        res.status(500).json({ 
+          error: error.message,
+          details: error 
+        });
+        return;
+      }
+
+      console.log('✅ Latest video entries:');
+      console.table(data);
+
+      res.json({
+        success: true,
+        message: 'Latest video entries with owner metadata',
+        entries: data,
+        count: data?.length || 0
+      });
+    } catch (error: any) {
+      console.error('❌ Verification exception:', error);
+      res.status(500).json({ error: error.message, stack: error.stack });
+    }
+  });
+
   // Ask for Gemini API key if not provided
   if (!process.env.GEMINI_API_KEY) {
     console.warn("⚠️  GEMINI_API_KEY not found. Speech verification features will be limited.");
