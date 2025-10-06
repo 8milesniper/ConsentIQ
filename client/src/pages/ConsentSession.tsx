@@ -73,13 +73,13 @@ export const ConsentSession = (): JSX.Element => {
 
     const qrCodeId = generateQrCodeId();
     
-    // Create session data - using placeholder participant info
+    // Create session data - using placeholder recipient info
     // In a real app, this might come from user input or app state
     const sessionData = {
       qrCodeId,
       initiatorUserId: user.id,
-      participantName: "Partner", // This would be dynamic in real app
-      participantAge: 25, // This would be dynamic in real app  
+      recipientFullName: "Partner", // This would be dynamic in real app
+      verifiedOver18: true, // This would be dynamic in real app  
       consentStatus: "pending" as const,
       deleteAfterDays: 90,
     };

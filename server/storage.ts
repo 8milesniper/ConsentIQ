@@ -177,9 +177,10 @@ export class MemStorage implements IStorage {
     const id = randomUUID();
     const now = new Date();
     
-    // Fetch user's full name for denormalized storage
+    // Fetch user's full name and profile picture for denormalized storage
     const user = await this.getUser(insertSession.initiatorUserId);
     const initiatorFullName = user?.fullName || null;
+    const initiatorProfilePictureUrl = user?.profilePictureUrl || null;
     
     // Calculate retentionUntil from deleteAfterDays (default to 90 days if not provided)
     const deleteAfterDays = insertSession.deleteAfterDays || 90;
@@ -189,9 +190,10 @@ export class MemStorage implements IStorage {
       id,
       initiatorUserId: insertSession.initiatorUserId,
       initiatorFullName,
-      participantName: insertSession.participantName,
-      participantPhone: insertSession.participantPhone || null,
-      participantAge: insertSession.participantAge,
+      initiatorProfilePictureUrl,
+      recipientFullName: insertSession.recipientFullName,
+      recipientPhone: insertSession.recipientPhone || null,
+      verifiedOver18: insertSession.verifiedOver18 ?? true,
       consentStatus: insertSession.consentStatus || "pending",
       qrCodeId: insertSession.qrCodeId,
       videoAssetId: insertSession.videoAssetId || null,
@@ -463,9 +465,10 @@ function mapConsentSessionFromDb(data: any): ConsentSession {
     qrCodeId: data.qr_code_id,
     initiatorUserId: data.initiator_user_id,
     initiatorFullName: data.initiator_full_name,
-    participantName: data.participant_name,
-    participantPhone: data.participant_phone,
-    participantAge: data.participant_age,
+    initiatorProfilePictureUrl: data.initiator_profile_picture_url,
+    recipientFullName: data.recipient_full_name,
+    recipientPhone: data.recipient_phone,
+    verifiedOver18: data.verified_over_18,
     consentStatus: data.consent_status,
     videoAssetId: data.video_asset_id,
     deleteAfterDays: data.delete_after_days,
@@ -672,9 +675,10 @@ export class PostgresStorage implements IStorage {
   }
 
   async createConsentSession(session: InsertConsentSession): Promise<ConsentSession> {
-    // Fetch user's full name for denormalized storage
+    // Fetch user's full name and profile picture for denormalized storage
     const user = await this.getUser(session.initiatorUserId);
     const initiatorFullName = user?.fullName || null;
+    const initiatorProfilePictureUrl = user?.profilePictureUrl || null;
     
     // Calculate retention date from deleteAfterDays
     const retentionUntil = new Date(Date.now() + ((session.deleteAfterDays || 90) * 24 * 60 * 60 * 1000));
@@ -684,9 +688,10 @@ export class PostgresStorage implements IStorage {
       qr_code_id: session.qrCodeId,
       initiator_user_id: session.initiatorUserId,
       initiator_full_name: initiatorFullName,
-      participant_name: session.participantName,
-      participant_phone: session.participantPhone || null,
-      participant_age: session.participantAge,
+      initiator_profile_picture_url: initiatorProfilePictureUrl,
+      recipient_full_name: session.recipientFullName,
+      recipient_phone: session.recipientPhone || null,
+      verified_over_18: session.verifiedOver18,
       consent_status: session.consentStatus || 'pending',
       video_asset_id: session.videoAssetId || null,
       delete_after_days: session.deleteAfterDays || 90,
