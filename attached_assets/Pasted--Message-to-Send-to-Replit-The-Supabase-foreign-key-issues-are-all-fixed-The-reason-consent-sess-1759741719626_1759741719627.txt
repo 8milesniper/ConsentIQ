@@ -1,0 +1,90 @@
+💬 Message to Send to Replit
+
+The Supabase foreign key issues are all fixed.
+The reason consent sessions still fail to create is that the backend is not sending a value for recipient_full_name, which is required (NOT NULL) in the consent_sessions table.
+
+There are two ways to fix this:
+1️⃣ Update the backend API route that creates consent sessions to include recipient_full_name in the JSON body.
+2️⃣ (Optional) If we want to allow blank values for now, we can relax the constraint by running:
+
+ALTER TABLE public.consent_sessions
+ALTER COLUMN recipient_full_name DROP NOT NULL;
+
+
+Please confirm that the POST /api/consent/sessions route now sends recipient_full_name and verified_over_18 as part of the payload.
+
+🧠 Backend Explanation
+
+Your POST /api/consent/sessions endpoint (likely in server.js, api/consent/sessions.ts, or routes/consent.ts) is the function that inserts into Supabase.
+
+It currently sends something like this:
+
+await supabase
+  .from("consent_sessions")
+  .insert([
+    {
+      qr_code_id,
+      initiator_user_id,
+      consent_status,
+      verified_over_18
+    }
+  ]);
+
+
+This fails because recipient_full_name is missing, but the database expects it.
+
+✅ Corrected Backend Insert Code
+
+Replace the insert block in that route with this version:
+
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+
+export async function createConsentSession(req, res) {
+  try {
+    const { qrCodeId, initiatorUserId, recipientFullName, verifiedOver18 } = req.body;
+
+    // Validate required fields
+    if (!initiatorUserId || !qrCodeId) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    // Insert into Supabase
+    const { data, error } = await supabase
+      .from("consent_sessions")
+      .insert([
+        {
+          qr_code_id: qrCodeId,
+          initiator_user_id: initiatorUserId,
+          recipient_full_name: recipientFullName || "Unknown",
+          consent_status: "pending",
+          verified_over_18: verifiedOver18 || false
+        }
+      ])
+      .select();
+
+    if (error) throw error;
+
+    res.status(200).json({ message: "Session created", session: data[0] });
+  } catch (err) {
+    console.error("Session creation failed:", err.message);
+    res.status(500).json({ error: "Failed to create consent session" });
+  }
+}
+
+🧩 Frontend or API Test Example
+
+If you’re testing manually (Postman, CURL, or browser):
+
+curl -X POST https://consentiq.tech/api/consent/sessions \
+-H "Content-Type: application/json" \
+-d '{
+  "qrCodeId": "ciq-test-flow-check",
+  "initiatorUserId": "6dc49cf7-b915-4391-879f-297d62ef6e0d",
+  "recipientFullName": "Flow Test User",
+  "verifiedOver18": true
+}'
+
+
+That should now create the consent session successfully and return a 200 response
