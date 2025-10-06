@@ -342,6 +342,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Upload profile picture
+  app.post('/api/upload-profile', requireAuth, memoryUpload.single('image'), async (req, res) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      const userId = authReq.user.userId;
+
+      if (!req.file) {
+        res.status(400).json({ success: false, error: "No image file provided" });
+        return;
+      }
+
+      const imageBuffer = req.file.buffer;
+      const fileName = `${userId}-profile.jpg`;
+
+      // Upload to Supabase Storage (profile-pictures bucket)
+      const profilePictureUrl = await uploadProfilePicture(imageBuffer, fileName);
+      console.log('✅ Profile picture uploaded:', profilePictureUrl);
+
+      // Save public URL to user record
+      await storage.updateUserProfilePictureUrl(userId, profilePictureUrl);
+      console.log('✅ Profile picture URL saved to database');
+
+      res.json({
+        success: true,
+        profileUrl: profilePictureUrl,
+      });
+    } catch (err: any) {
+      console.error('Profile upload failed:', err);
+      res.status(500).json({ success: false, error: err.message || "Profile upload failed" });
+    }
+  });
+
   // Account Cleanup Routes
   
   // Cleanup expired accounts (requires admin authentication)
