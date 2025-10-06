@@ -593,6 +593,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all consent sessions for current user (newest first)
+  app.get("/api/users/me/sessions", requireAuth, requireSubscription, async (req, res) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      const sessions = await storage.getUserConsentSessions(authReq.user.userId);
+      res.json(sessions);
+    } catch (error) {
+      console.error("Failed to get user sessions:", error);
+      res.status(500).json({ error: "Failed to get sessions" });
+    }
+  });
+
   // Update consent session status (public access for participants)
   app.patch("/api/consent/sessions/:id/status", async (req, res) => {
     try {

@@ -754,6 +754,17 @@ export class PostgresStorage implements IStorage {
     } as any;
   }
 
+  async getUserConsentSessions(userId: string): Promise<ConsentSession[]> {
+    const { data, error } = await supabase
+      .from("consent_sessions")
+      .select("*")
+      .eq("initiator_user_id", userId)
+      .order("created_at", { ascending: false });
+    
+    if (error) return [];
+    return data.map(mapConsentSessionFromDb);
+  }
+
   async updateConsentSessionStatus(id: string, status: "pending" | "granted" | "denied" | "revoked", videoAssetId?: string): Promise<ConsentSession | undefined> {
     const updateData: any = { consent_status: status };
     if (videoAssetId) {
