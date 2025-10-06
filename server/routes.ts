@@ -11,7 +11,7 @@ import multer from "multer";
 import * as fs from "fs";
 import * as path from "path";
 import Stripe from "stripe";
-import { uploadConsentVideo, uploadProfilePicture, getSignedVideoUrl } from "./supabaseStorage";
+import { uploadConsentVideo, uploadProfilePicture, getSignedVideoUrl, deleteConsentVideo } from "./supabaseStorage";
 import { createClient } from "@supabase/supabase-js";
 
 // Extend Express Request type to include user
@@ -714,7 +714,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Video upload endpoint with SUPABASE STORAGE (LEGACY - prefer signed URL approach)
+  // Video upload endpoint with SUPABASE STORAGE
   app.post("/api/upload", memoryUpload.single("video"), async (req, res) => {
     try {
       if (!req.file) {
@@ -724,27 +724,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const fileBuffer = req.file.buffer;
       const sessionId = req.body.sessionId;
-      const videoAssetId = req.body.videoAssetId;
+      const userId = req.body.userId;
+      const fullName = req.body.fullName;
 
-      if (!sessionId || !videoAssetId) {
-        res.status(400).json({ error: "Session ID and Video Asset ID required" });
+      if (!sessionId) {
+        res.status(400).json({ error: "Session ID required" });
         return;
       }
 
-      // Verify video asset exists before upload
-      const videoAsset = await storage.getVideoAsset(videoAssetId);
-      if (!videoAsset) {
-        res.status(404).json({ error: "Video asset not found" });
-        return;
-      }
-
-      // Upload to Supabase consent-videos bucket
-      const filename = `session-${sessionId}-${Date.now()}.webm`;
-      let supabasePath;
+      // Upload video to Supabase Storage
+      const fileName = `consent-video-${sessionId}-${Date.now()}.webm`;
+      let uploadResult;
       
       try {
-        supabasePath = await uploadConsentVideo(fileBuffer, filename);
-        console.log(`✅ VIDEO SAVED TO SUPABASE: ${supabasePath} (${fileBuffer.length} bytes)`);
+        uploadResult = await uploadConsentVideo(fileBuffer, fileName, req.file.mimetype || 'video/webm');
+        console.log(`✅ VIDEO UPLOADED TO SUPABASE: ${uploadResult.path} (${fileBuffer.length} bytes)`);
       } catch (uploadErr: any) {
         console.error('Supabase upload failed:', uploadErr);
         res.status(500).json({ 
@@ -754,23 +748,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      // Update video asset with Supabase storage path
+      // Insert metadata into video_assets table
+      let videoAsset;
       try {
-        await storage.updateVideoAssetUrl(videoAssetId, supabasePath);
-        console.log(`✅ DATABASE UPDATED: Video asset ${videoAssetId} -> ${supabasePath}`);
+        videoAsset = await storage.createVideoAsset({
+          ownerUserId: userId || null,
+          ownerFullName: fullName || null,
+          filename: fileName,
+          originalName: req.file.originalname,
+          mimeType: req.file.mimetype || 'video/webm',
+          fileSize: fileBuffer.length,
+          storageKey: uploadResult.path, // legacy field
+          storageUrl: uploadResult.path, // Supabase storage path (private - use signed URLs for access)
+          isEncrypted: true,
+          duration: null,
+          resolution: null,
+          checksum: null,
+        });
+        
+        console.log(`✅ VIDEO METADATA SAVED: ${videoAsset.id} -> ${uploadResult.path}`);
       } catch (dbErr: any) {
-        console.error('Database update failed:', dbErr);
+        console.error('Database insert failed:', dbErr);
+        
+        // Cleanup: Delete the uploaded video since metadata save failed
+        try {
+          await deleteConsentVideo(uploadResult.path);
+          console.log(`🗑️ CLEANUP: Deleted orphaned video ${uploadResult.path}`);
+        } catch (cleanupErr) {
+          console.error('Failed to cleanup orphaned video:', cleanupErr);
+        }
+        
         res.status(500).json({ 
-          error: "Video uploaded but database update failed",
+          error: "Video uploaded but metadata save failed",
           details: dbErr.message 
         });
         return;
       }
 
-      // Return storage path (NOT public URL - this is a private bucket)
+      // Link video asset to consent session
+      try {
+        await storage.updateConsentSessionStatus(sessionId, "pending", videoAsset.id);
+        console.log(`✅ SESSION LINKED: ${sessionId} -> video ${videoAsset.id}`);
+      } catch (linkErr: any) {
+        console.error('Failed to link session to video:', linkErr);
+        // Continue anyway - video is uploaded and metadata is saved
+      }
+
+      // Return video asset ID and storage path
       res.json({ 
         success: true,
-        path: supabasePath,
+        videoAssetId: videoAsset.id,
+        path: uploadResult.path,
         size: fileBuffer.length
       });
     } catch (err: any) {

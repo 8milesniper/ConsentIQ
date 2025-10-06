@@ -303,8 +303,8 @@ export class MemStorage implements IStorage {
     const id = randomUUID();
     const videoAsset: VideoAsset = {
       id,
-      ownerUserId: null,
-      ownerFullName: null,
+      ownerUserId: insertAsset.ownerUserId || null,
+      ownerFullName: insertAsset.ownerFullName || null,
       filename: insertAsset.filename,
       originalName: insertAsset.originalName || null,
       mimeType: insertAsset.mimeType,
@@ -312,7 +312,7 @@ export class MemStorage implements IStorage {
       duration: insertAsset.duration || null,
       resolution: insertAsset.resolution || null,
       storageKey: insertAsset.storageKey,
-      storageUrl: null,
+      storageUrl: insertAsset.storageUrl || null,
       isEncrypted: insertAsset.isEncrypted !== undefined ? insertAsset.isEncrypted : true,
       checksum: insertAsset.checksum || null,
       uploadedAt: new Date(),
@@ -836,6 +836,8 @@ export class PostgresStorage implements IStorage {
   async createVideoAsset(asset: InsertVideoAsset): Promise<VideoAsset> {
     // Map camelCase to snake_case for database
     const dbAsset = {
+      owner_user_id: asset.ownerUserId,
+      owner_full_name: asset.ownerFullName,
       filename: asset.filename,
       original_name: asset.originalName,
       mime_type: asset.mimeType,

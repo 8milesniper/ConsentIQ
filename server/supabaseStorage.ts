@@ -16,18 +16,29 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-export async function uploadConsentVideo(fileBuffer: Buffer, filename: string): Promise<string> {
+export async function uploadConsentVideo(
+  fileBuffer: Buffer, 
+  filename: string,
+  contentType: string = 'video/webm'
+): Promise<{ path: string; fullPath: string }> {
   // Upload WITHOUT upsert to prevent overwriting existing videos
   const { data, error } = await supabase.storage
     .from('consent-videos')
-    .upload(filename, fileBuffer, { upsert: false });
+    .upload(filename, fileBuffer, { 
+      upsert: false,
+      contentType 
+    });
   
   if (error) {
     console.error('Supabase video upload error:', error);
     throw error;
   }
   
-  return data.path;
+  // Return both path and full path for storage reference
+  return {
+    path: data.path,
+    fullPath: `consent-videos/${data.path}`
+  };
 }
 
 export async function uploadProfilePicture(fileBuffer: Buffer, filename: string): Promise<string> {
