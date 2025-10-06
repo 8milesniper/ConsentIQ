@@ -188,6 +188,7 @@ export class MemStorage implements IStorage {
     
     const session: ConsentSession = {
       id,
+      createdAt: now,
       initiatorUserId: insertSession.initiatorUserId,
       initiatorFullName,
       initiatorProfilePictureUrl,
@@ -462,6 +463,7 @@ function mapVideoAssetFromDb(data: any): VideoAsset {
 function mapConsentSessionFromDb(data: any): ConsentSession {
   return {
     id: data.id,
+    createdAt: data.created_at,
     qrCodeId: data.qr_code_id,
     initiatorUserId: data.initiator_user_id,
     initiatorFullName: data.initiator_full_name,
@@ -714,6 +716,7 @@ export class PostgresStorage implements IStorage {
       .from("consent_sessions")
       .select("*")
       .eq("id", id)
+      .order("created_at", { ascending: false })
       .single();
     
     if (error) return undefined;
@@ -733,6 +736,7 @@ export class PostgresStorage implements IStorage {
         )
       `)
       .eq("qr_code_id", qrCodeId)
+      .order("created_at", { ascending: false })
       .single();
     
     if (error) return undefined;

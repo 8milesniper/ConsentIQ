@@ -45,6 +45,7 @@ export const videoAssets = pgTable("video_assets", {
 
 export const consentSessions = pgTable("consent_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
   initiatorUserId: varchar("initiator_user_id").notNull().references(() => users.id),
   initiatorFullName: text("initiator_full_name"),
   initiatorProfilePictureUrl: text("initiator_profile_picture_url"),
@@ -77,6 +78,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
 
 export const insertConsentSessionSchema = createInsertSchema(consentSessions).omit({
   id: true,
+  createdAt: true,
   sessionStartTime: true,
   consentGrantedTime: true,
   consentRevokedTime: true,
