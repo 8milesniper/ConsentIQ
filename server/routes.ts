@@ -48,6 +48,68 @@ function getVideoStorageDir(): string {
   return videoDir;
 }
 
+// ============================
+// ConsentIQ Video Link Handler
+// ============================
+async function linkAndAttachVideo({
+  sessionId,
+  fileName,
+  fileSize,
+  mimeType,
+  storagePath,
+  storageUrl,
+  ownerUserId,
+  ownerFullName,
+  recipientFullName
+}: {
+  sessionId: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  storagePath: string;
+  storageUrl: string;
+  ownerUserId: string | null;
+  ownerFullName: string | null;
+  recipientFullName: string | null;
+}) {
+  try {
+    // STEP 1: Insert video metadata into video_assets
+    const videoAsset = await storage.createVideoAsset({
+      ownerUserId: ownerUserId || null,
+      ownerFullName: ownerFullName || null,
+      filename: fileName,
+      originalName: fileName,
+      mimeType: mimeType,
+      fileSize: fileSize,
+      storageKey: storagePath,
+      storageUrl: storageUrl,
+      isEncrypted: true,
+      duration: null,
+      resolution: null,
+      checksum: null,
+    });
+
+    const videoId = videoAsset.id;
+    console.log('✅ Video metadata inserted with ID:', videoId);
+
+    // STEP 2: Auto-update consent_sessions with video_asset_id
+    await storage.updateConsentSessionStatus(sessionId, "pending", videoId);
+    console.log('✅ Session linked to video successfully.');
+
+    // STEP 3: Return success with full details
+    return {
+      success: true,
+      session_id: sessionId,
+      video_id: videoId,
+      video_url: storageUrl
+    };
+
+  } catch (err: any) {
+    console.error('💥 Unexpected error in linkAndAttachVideo:', err);
+    return { success: false, error: err.message };
+  }
+}
+
 // Set up multer for video file uploads (memory storage for Supabase)
 const memoryUpload = multer({ 
   storage: multer.memoryStorage(),
@@ -792,29 +854,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      // Insert metadata into video_assets table
-      let videoAsset;
-      try {
-        videoAsset = await storage.createVideoAsset({
-          ownerUserId: userId || null,
-          ownerFullName: fullName || null,
-          filename: fileName,
-          originalName: req.file.originalname,
-          mimeType: req.file.mimetype || 'video/webm',
-          fileSize: fileBuffer.length,
-          storageKey: uploadResult.path, // legacy field
-          storageUrl: uploadResult.path, // Supabase storage path (private - use signed URLs for access)
-          isEncrypted: true,
-          duration: null,
-          resolution: null,
-          checksum: null,
-        });
-        
-        console.log(`✅ VIDEO METADATA SAVED: ${videoAsset.id} -> ${uploadResult.path}`);
-      } catch (dbErr: any) {
-        console.error('Database insert failed:', dbErr);
-        
-        // Cleanup: Delete the uploaded video since metadata save failed
+      // Use linkAndAttachVideo handler to insert metadata and link to session
+      const linkResult = await linkAndAttachVideo({
+        sessionId: sessionId,
+        fileName: fileName,
+        fileSize: fileBuffer.length,
+        mimeType: req.file.mimetype || 'video/webm',
+        storagePath: uploadResult.path,
+        storageUrl: uploadResult.path,
+        ownerUserId: userId || null,
+        ownerFullName: fullName || null,
+        recipientFullName: null, // Can be retrieved from session if needed
+      });
+
+      if (!linkResult.success) {
+        // Cleanup: Delete the uploaded video since linking failed
         try {
           await deleteConsentVideo(uploadResult.path);
           console.log(`🗑️ CLEANUP: Deleted orphaned video ${uploadResult.path}`);
@@ -823,25 +877,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         res.status(500).json({ 
-          error: "Video uploaded but metadata save failed",
-          details: dbErr.message 
+          error: "Video uploaded but linking failed",
+          details: linkResult.error 
         });
         return;
       }
 
-      // Link video asset to consent session
-      try {
-        await storage.updateConsentSessionStatus(sessionId, "pending", videoAsset.id);
-        console.log(`✅ SESSION LINKED: ${sessionId} -> video ${videoAsset.id}`);
-      } catch (linkErr: any) {
-        console.error('Failed to link session to video:', linkErr);
-        // Continue anyway - video is uploaded and metadata is saved
-      }
-
-      // Return video asset ID and storage path
+      // Return comprehensive response with session_id, video_id, and video_url
       res.json({ 
         success: true,
-        videoAssetId: videoAsset.id,
+        session_id: linkResult.session_id,
+        video_id: linkResult.video_id,
+        video_url: linkResult.video_url,
+        videoAssetId: linkResult.video_id, // Legacy compatibility
         path: uploadResult.path,
         size: fileBuffer.length
       });

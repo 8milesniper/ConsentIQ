@@ -1,0 +1,100 @@
+// ============================
+// ConsentIQ Video Link Handler
+// ============================
+
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+async function linkAndAttachVideo({
+  sessionId,
+  fileName,
+  fileSize,
+  mimeType,
+  storagePath,
+  storageUrl,
+  ownerUserId,
+  ownerFullName,
+  recipientFullName
+}) {
+  try {
+    // STEP 1: Insert video metadata into video_assets
+    const { data: videoData, error: insertError } = await supabase
+      .from('video_assets')
+      .insert([
+        {
+          consent_session_id: sessionId,
+          filename: fileName,
+          original_name: fileName,
+          mime_type: mimeType,
+          file_size: fileSize,
+          storage_key: storagePath,
+          storage_url: storageUrl,
+          owner_user_id: ownerUserId,
+          owner_full_name: ownerFullName,
+          recipient_full_name: recipientFullName,
+          uploaded_at: new Date().toISOString(),
+        }
+      ])
+      .select('id, storage_url')
+      .single();
+
+    if (insertError) {
+      console.error('❌ Error inserting video metadata:', insertError.message);
+      return { success: false, error: insertError.message };
+    }
+
+    const videoId = videoData.id;
+    console.log('✅ Video metadata inserted with ID:', videoId);
+
+    // STEP 2: Auto-update consent_sessions with new video_asset_id_new
+    const { error: updateError } = await supabase
+      .from('consent_sessions')
+      .update({ video_asset_id_new: videoId })
+      .eq('id', sessionId);
+
+    if (updateError) {
+      console.error('⚠️ Error linking video to session:', updateError.message);
+      return {
+        success: false,
+        error: 'Video saved, but session link failed: ' + updateError.message
+      };
+    }
+
+    console.log('✅ Session linked to video successfully.');
+
+    // STEP 3: Return success with full details
+    return {
+      success: true,
+      session_id: sessionId,
+      video_id: videoId,
+      video_url: videoData.storage_url
+    };
+
+  } catch (err) {
+    console.error('💥 Unexpected error:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+// ============================
+// Example usage for testing
+// ============================
+// Paste this below your working upload success callback
+
+const result = await linkAndAttachVideo({
+  sessionId: '3ce55060-bb8d-4c4f-9093-1fa2cddd1847',  // <-- use live session id
+  fileName: 'session-3ce55060-bb8d-4c4f-9093-1fa2cddd1847.webm',
+  fileSize: 1210335,
+  mimeType: 'video/webm',
+  storagePath: 'consent-videos/session-3ce55060-bb8d-4c4f-9093-1fa2cddd1847.webm',
+  storageUrl: 'https://fvnvmdhvtbvtcfnrobsm.supabase.co/storage/v1/object/public/consent-videos/session-3ce55060-bb8d-4c4f-9093-1fa2cddd1847.webm',
+  ownerUserId: 'tony_user_id_here',    // from login context
+  ownerFullName: 'Tony Robinson',
+  recipientFullName: 'Partner'
+});
+
+console.log(result);
