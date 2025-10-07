@@ -715,7 +715,6 @@ export class PostgresStorage implements IStorage {
       recipient_phone: session.recipientPhone || null,
       verified_over_18: session.verifiedOver18 ?? true,
       consent_status: session.consentStatus || 'pending',
-      video_asset_id: session.videoAssetId || null,
       delete_after_days: deleteAfterDays,
       retention_until: retentionUntil?.toISOString() || null,
     };
