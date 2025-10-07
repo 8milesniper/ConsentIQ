@@ -695,7 +695,7 @@ export class PostgresStorage implements IStorage {
     return data.map(mapUserFromDb);
   }
 
-  async createConsentSession(session: InsertConsentSession): Promise<ConsentSession> {
+  async createConsentSession(session: InsertConsentSession & { initiatorUserId: string; qrCodeId: string }): Promise<ConsentSession> {
     // Fetch user's full name and profile picture for denormalized storage
     const user = await this.getUser(session.initiatorUserId);
     const initiatorFullName = user?.fullName || null;
@@ -705,29 +705,50 @@ export class PostgresStorage implements IStorage {
     const deleteAfterDays = session.deleteAfterDays ?? null;
     const retentionUntil = deleteAfterDays ? new Date(Date.now() + (deleteAfterDays * 24 * 60 * 60 * 1000)) : null;
     
-    // Map camelCase to snake_case for database
-    const dbSession = {
-      qr_code_id: session.qrCodeId,
-      initiator_user_id: session.initiatorUserId,
-      initiator_full_name: initiatorFullName,
-      initiator_profile_picture_url: initiatorProfilePictureUrl,
-      recipient_full_name: session.recipientFullName,
-      recipient_phone: session.recipientPhone || null,
-      verified_over_18: session.verifiedOver18,
-      consent_status: session.consentStatus || 'pending',
-      video_asset_id: session.videoAssetId || null,
-      delete_after_days: deleteAfterDays,
-      retention_until: retentionUntil ? retentionUntil.toISOString() : null
-    };
+    // Use direct SQL to bypass PostgREST schema cache issues
+    const id = randomUUID();
+    const now = new Date();
     
-    const { data, error } = await supabase
-      .from("consent_sessions")
-      .insert([dbSession])
-      .select()
-      .single();
+    const result = await sql`
+      INSERT INTO consent_sessions (
+        id,
+        qr_code_id,
+        initiator_user_id,
+        initiator_full_name,
+        initiator_profile_picture_url,
+        recipient_full_name,
+        recipient_phone,
+        verified_over_18,
+        consent_status,
+        video_asset_id,
+        delete_after_days,
+        retention_until,
+        created_at,
+        session_start_time
+      ) VALUES (
+        ${id},
+        ${session.qrCodeId},
+        ${session.initiatorUserId},
+        ${initiatorFullName},
+        ${initiatorProfilePictureUrl},
+        ${session.recipientFullName},
+        ${session.recipientPhone || null},
+        ${session.verifiedOver18 ?? true},
+        ${session.consentStatus || 'pending'},
+        ${session.videoAssetId || null},
+        ${deleteAfterDays},
+        ${retentionUntil},
+        ${now},
+        ${now}
+      )
+      RETURNING *
+    `;
     
-    if (error) throw error;
-    return mapConsentSessionFromDb(data);
+    if (!result || result.length === 0) {
+      throw new Error('Failed to create consent session');
+    }
+    
+    return mapConsentSessionFromDb(result[0]);
   }
 
   async getConsentSession(id: string): Promise<ConsentSession | undefined> {
