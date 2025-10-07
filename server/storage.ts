@@ -1,6 +1,7 @@
 import { type User, type SafeUser, type InsertUser, type ConsentSession, type InsertConsentSession, type VideoAsset, type InsertVideoAsset } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { createClient } from "@supabase/supabase-js";
+import { neon } from "@neondatabase/serverless";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -10,6 +11,9 @@ if (!supabaseUrl || !supabaseKey) {
 }
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Direct SQL connection to bypass PostgREST cache issues
+const sql = neon(process.env.DATABASE_URL!);
 
 // modify the interface with any CRUD methods
 // you might need
