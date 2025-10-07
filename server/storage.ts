@@ -31,6 +31,7 @@ export interface IStorage {
   createConsentSession(session: InsertConsentSession): Promise<ConsentSession>;
   getConsentSession(id: string): Promise<ConsentSession | undefined>;
   getConsentSessionByQrCode(qrCodeId: string): Promise<ConsentSession | undefined>;
+  updateRecipientInfo(id: string, recipientFullName: string, recipientPhone?: string): Promise<ConsentSession | undefined>;
   updateConsentSessionStatus(id: string, status: "pending" | "granted" | "denied" | "revoked", videoAssetId?: string): Promise<ConsentSession | undefined>;
   updateConsentVerification(id: string, buttonChoice: "granted" | "denied", aiAnalysisResult: string, hasAudioMismatch: boolean): Promise<ConsentSession | undefined>;
   updateAiAnalysisResult(id: string, aiAnalysisResult: string): Promise<ConsentSession | undefined>;
@@ -256,6 +257,20 @@ export class MemStorage implements IStorage {
       ...session,
       initiator
     };
+  }
+
+  async updateRecipientInfo(id: string, recipientFullName: string, recipientPhone?: string): Promise<ConsentSession | undefined> {
+    const session = this.consentSessions.get(id);
+    if (!session) return undefined;
+
+    const updatedSession: ConsentSession = {
+      ...session,
+      recipientFullName,
+      recipientPhone: recipientPhone || session.recipientPhone,
+    };
+
+    this.consentSessions.set(id, updatedSession);
+    return updatedSession;
   }
 
   async updateConsentSessionStatus(
@@ -763,6 +778,23 @@ export class PostgresStorage implements IStorage {
     
     if (error) return [];
     return data.map(mapConsentSessionFromDb);
+  }
+
+  async updateRecipientInfo(id: string, recipientFullName: string, recipientPhone?: string): Promise<ConsentSession | undefined> {
+    const updateData: any = { recipient_full_name: recipientFullName };
+    if (recipientPhone !== undefined) {
+      updateData.recipient_phone = recipientPhone;
+    }
+
+    const { data, error } = await supabase
+      .from("consent_sessions")
+      .update(updateData)
+      .eq("id", id)
+      .select()
+      .single();
+    
+    if (error) return undefined;
+    return mapConsentSessionFromDb(data);
   }
 
   async updateConsentSessionStatus(id: string, status: "pending" | "granted" | "denied" | "revoked", videoAssetId?: string): Promise<ConsentSession | undefined> {

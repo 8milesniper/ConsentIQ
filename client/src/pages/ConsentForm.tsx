@@ -227,9 +227,39 @@ export const ConsentForm = (): JSX.Element => {
     }
   };
 
-  const onSubmit = (data: ConsentFormData) => {
-    console.log("Form data:", data);
-    setCurrentStep(1); // Move to video recording step
+  const onSubmit = async (data: ConsentFormData) => {
+    if (!session) {
+      toast({ title: "Session not found", variant: "destructive" });
+      return;
+    }
+
+    try {
+      // Update session with recipient info
+      const response = await fetch(`/api/consent/sessions/${session.id}/recipient`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipientFullName: data.name,
+          recipientPhone: data.phone,
+        }),
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update recipient info');
+      }
+
+      const updatedSession = await response.json();
+      setSession(updatedSession);
+      setCurrentStep(1); // Move to video recording step
+    } catch (error) {
+      console.error("Failed to update recipient info:", error);
+      toast({
+        title: "Update failed",
+        description: "Could not save your information. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleGrantConsent = async () => {

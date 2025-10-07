@@ -667,6 +667,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update recipient info (public access for participants)
+  app.patch("/api/consent/sessions/:id/recipient", async (req, res) => {
+    try {
+      const { recipientFullName, recipientPhone } = req.body;
+      
+      if (!recipientFullName) {
+        res.status(400).json({ error: "recipientFullName is required" });
+        return;
+      }
+
+      const session = await storage.updateRecipientInfo(req.params.id, recipientFullName, recipientPhone);
+      if (!session) {
+        res.status(404).json({ error: "Consent session not found" });
+        return;
+      }
+      
+      res.json(session);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update recipient info" });
+    }
+  });
+
   // Update consent session status (public access for participants)
   app.patch("/api/consent/sessions/:id/status", async (req, res) => {
     try {
