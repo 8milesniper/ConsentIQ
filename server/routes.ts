@@ -614,7 +614,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create new consent session (requires authentication and active subscription)
   app.post("/api/consent/sessions", requireAuth, requireSubscription, async (req, res) => {
     try {
-      const sessionData = insertConsentSessionSchema.parse(req.body);
+      const validatedData = insertConsentSessionSchema.parse(req.body);
+      
+      // Auto-inject initiatorUserId from authenticated user and generate QR code ID
+      const sessionData = {
+        ...validatedData,
+        initiatorUserId: req.user!.id,
+        qrCodeId: randomUUID(),
+      };
+      
       const session = await storage.createConsentSession(sessionData);
       res.json(session);
     } catch (error) {

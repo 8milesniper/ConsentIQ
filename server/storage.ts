@@ -32,7 +32,7 @@ export interface IStorage {
   getUsersScheduledForDeletion(): Promise<User[]>;
   
   // Consent session management
-  createConsentSession(session: InsertConsentSession): Promise<ConsentSession>;
+  createConsentSession(session: InsertConsentSession & { initiatorUserId: string; qrCodeId: string }): Promise<ConsentSession>;
   getConsentSession(id: string): Promise<ConsentSession | undefined>;
   getConsentSessionByQrCode(qrCodeId: string): Promise<ConsentSession | undefined>;
   updateRecipientInfo(id: string, recipientFullName: string, recipientPhone?: string): Promise<ConsentSession | undefined>;

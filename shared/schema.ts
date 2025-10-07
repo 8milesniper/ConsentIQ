@@ -83,7 +83,10 @@ export const insertConsentSessionSchema = createInsertSchema(consentSessions).om
   consentGrantedTime: true,
   consentRevokedTime: true,
   retentionUntil: true, // will be calculated from deleteAfterDays in backend
+  initiatorUserId: true, // auto-injected from req.user
+  qrCodeId: true, // auto-generated
 }).extend({
+  // initiatorUserId and qrCodeId will be auto-populated by backend
   // retentionUntil will be calculated: new Date(Date.now() + (deleteAfterDays * 24 * 60 * 60 * 1000))
 });
 
